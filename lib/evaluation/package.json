@@ -1,0 +1,19 @@
+{
+  "name": "iesor-evaluation",
+  "private" : "true",
+  "version": "0.0.1",
+  "description": "Validating win-nsga and node-iesor through long evolutionary runs.",
+  "keywords": [
+    "Evolution",
+    "Artificial Neural Networks",
+    "WIN"
+  ],
+  "author": {
+    "name": "Paul Szerlip",
+    "email": "Paul.Szerlip@cs.ucf.edu",
+    "url": "http://designforcode.com/"
+  },
+  "main": "iesor-evaluation.js",
+  "bugs": "https://github.com/OptimusLime/win-nsga/issues",
+  "license": "MIT"
+}

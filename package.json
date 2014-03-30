@@ -1,0 +1,36 @@
+{
+  "name": "iesor-validation",
+  "private" : "true",
+  "version": "0.0.1",
+  "description": "Validating win-nsga and node-iesor through long evolutionary runs.",
+  "keywords": [
+    "Evolution",
+    "Artificial Neural Networks",
+    "WIN"
+  ],
+  "author": {
+    "name": "Paul Szerlip",
+    "email": "Paul.Szerlip@cs.ucf.edu",
+    "url": "http://designforcode.com/"
+  },
+  "main": "lib/iesor-validate.js",
+  "bugs": "https://github.com/OptimusLime/win-nsga/issues",
+  "license": "MIT",
+  "dependencies": {
+    "q": "*",
+    "optimuslime-traverse": "*",
+    "win-utils": "0.x.x"
+  },
+  "devDependencies": {
+    "neatjs" : "*",
+    "cppnjs" : "*",
+    "colors": "*",
+    "win-backbone": "*",
+    "win-gen": "*",
+    "win-schema": "*",
+    "win-nsga": "*",
+    "win-neat": "*",
+    "mocha": "1.1.x",
+    "should": "1.1.x"
+  }
+}
