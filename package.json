@@ -17,6 +17,7 @@
   "bugs": "https://github.com/OptimusLime/win-nsga/issues",
   "license": "MIT",
   "dependencies": {
+    // "./iesor-cpp": "*",
     "q": "*",
     "optimuslime-traverse": "*",
     "win-utils": "0.x.x"

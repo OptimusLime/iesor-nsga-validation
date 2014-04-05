@@ -1,0 +1,22 @@
+{
+  "name": "iesor-cpp",
+  "private" : "true",
+  "version": "0.0.1",
+  "description": "Has all the win + iesor c++ simulation logic.",
+  "keywords": [
+    "Evolution",
+    "Artificial Neural Networks",
+    "WIN"
+  ],
+  "author": {
+    "name": "Paul Szerlip",
+    "email": "Paul.Szerlip@cs.ucf.edu",
+    "url": "http://designforcode.com/"
+  },
+  "main": "iesor-cpp.js",
+  "dependencies" : {
+    "node-iesor" : "*"
+  },
+  "bugs": "https://github.com/OptimusLime/win-nsga/issues",
+  "license": "MIT"
+}
