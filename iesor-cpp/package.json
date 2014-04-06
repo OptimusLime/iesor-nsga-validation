@@ -15,7 +15,9 @@
   },
   "main": "iesor-cpp.js",
   "dependencies" : {
-    "node-iesor" : "*"
+    "node-iesor" : "*",
+    "win-neat" : "*",
+    "cppnjs" : "*"
   },
   "bugs": "https://github.com/OptimusLime/win-nsga/issues",
   "license": "MIT"
