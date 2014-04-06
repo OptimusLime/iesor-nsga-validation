@@ -19,7 +19,8 @@
   "dependencies": {
     "q": "*",
     "optimuslime-traverse": "*",
-    "win-utils": "0.x.x"
+    "win-utils": "0.x.x",
+    "sylvester" : "*"
   },
   "devDependencies": {
     "neatjs" : "*",

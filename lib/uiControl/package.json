@@ -1,0 +1,19 @@
+{
+  "name": "uiControl",
+  "private" : "true",
+  "version": "0.0.1",
+  "description": "Controlling the UI through socket interactions.",
+  "keywords": [
+    "Evolution",
+    "Artificial Neural Networks",
+    "WIN"
+  ],
+  "author": {
+    "name": "Paul Szerlip",
+    "email": "Paul.Szerlip@cs.ucf.edu",
+    "url": "http://designforcode.com/"
+  },
+  "main": "uiControl.js",
+  "bugs": "https://github.com/OptimusLime/win-nsga/issues",
+  "license": "MIT"
+}

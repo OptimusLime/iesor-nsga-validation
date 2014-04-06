@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset=utf-8 />
+	<title></title>
+    <style>
+
+    body, html
+    {
+    	width:100%;
+    	height:100%;
+    }
+
+	svg {
+	  border: 1px solid #999;
+	  overflow: hidden;
+	}
+
+	text {
+	  font-weight: 300;
+	  font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
+	  font-size: 14px;
+	}
+
+	.node rect {
+	  stroke: #333;
+	  stroke-width: 2px;
+	  fill: #fff;
+	}
+
+	.edgeLabel rect {
+	  fill: #fff;
+	}
+
+	.edgePath path {
+	  stroke: #333;
+	  stroke-width: 1.5px;
+	  fill: none;
+	}
+
+	h1, h2 {
+	  color: #333;
+	}
+
+	textarea {
+	  width: 800px;
+	}
+
+	label {
+	  margin-top: 1em;
+	  display: block;
+	}
+
+	.error {
+	  color: red;
+	}
+	</style>
+</head>
+<body class="flexcenter">
+
+	<!-- <input id="iTitle" placeholder="SVG File Name"></input> -->
+	<!-- <button id="bSvgSave">Save SVG to File</button> -->
+
+	 <!-- <div id="d3Phylogeny" style="height: 100%;"></div> -->
+     <!-- <div id="header">phylogeny</div> -->
+
+	<svg id="d3Phylogeny" width=800 height=600>
+  		<g transform="translate(20, 20)"/>
+	</svg>
+
+	<script src="http://d3js.org/d3.v3.min.js"></script>
+	<script src="/js/dagre-d3.min.js"></script>
+	<script src="/js/graphlib-dot.min.js"></script>
+    <script type="text/javascript" src="/js/fabric.min.js"></script>
+
+	<!-- // <script type="text/javascript" src="http://cpettitt.github.io/project/dagre-d3/latest/dagre-d3.min.js"></script> -->
+
+	<!-- Now we start messing with the flex object -->
+	<script type="text/javascript">
+
+
+	var _socketCallbacks = {};
+	var _cbID = 0;
+	function getNextID()
+	{
+		return _cbID++;
+	}
+
+	function saveCallback(id, cb)
+	{
+		if(cb)
+			_socketCallbacks[id] = cb;
+	}
+
+	window.onload = function()
+	{
+		var wsServerLocation = "ws://localhost:9000";
+
+		var socketID;
+		// var evoID = "nsgaEvoID";
+
+		ws = new WebSocket(wsServerLocation); 
+
+		function sendJSONMessage(ws, message, cb)
+		{
+			var replyID = getNextID();
+			//save callback if it exists
+			saveCallback(replyID, cb);
+
+			message.replyID = replyID;
+
+			ws.send(JSON.stringify(message));
+		}
+
+		ws.onopen = function()
+		{
+			//
+			console.log("UI Socket connected!");
+
+
+
+			
+			//"evolution:nsga-startEvolution"
+		}
+
+		ws.onclose = function()
+		{
+			console.log("Socket closed: ", arguments);
+		}
+		ws.onerror = function(err)
+		{
+			console.error(err);
+		}
+		ws.onmessage = function(evt)
+		{
+			if(evt.data)
+			{
+				var message = JSON.parse(evt.data);
+
+				if(message.event == "socketID")
+				{
+					socketID = message.socketID;
+					sendJSONMessage(ws, {event: "uiControl:startUIEvolution", arguments: [socketID]});
+				}
+				else if(message.event == "evolutionData")
+				{
+					//new data hooray!
+					handleEvolutionData(message.data);
+				}
+
+				// console.log("Message from app: ", message);
+			}
+		}
+		//what do we do with websocket???
+
+		var matchRectangles = {};
+
+		var artifacts, getOrCreateData, styleElement;
+		var inputGraph = {value:""};
+		var oldInputGraphValue;
+
+		//whatever, gonna get rid of this soon
+		var debugAlignment;
+
+		/* Example */
+		// digraph {
+		//     /* Note: HTML labels do not work in IE, which lacks support for &lt;foreignObject&gt; tags. */
+		//     A [label="<div style='padding: 10px;'>A <span style='font-size:32px'>Big</span> <span style='color:red;'>HTML</span> Source!</div>"];
+		//     C;
+		//     E [label="A sink"];
+		//     A -&gt; B -&gt; C;
+		//     B -&gt; D -&gt; E;
+		//     C -&gt; E;
+		//     A -&gt; D [label="<div>A multi-rank <span style='color:blue;'>HTML</span> edge!</div>"];
+		// }
+
+		function tryDraw() {
+
+		  var result;
+		  if (oldInputGraphValue !== inputGraph.value) {
+
+		    oldInputGraphValue = inputGraph.value;
+		    try {
+		      result = graphlibDot.parse(inputGraph.value);
+		    } catch (e) {
+		      // inputGraph.setAttribute("class", "error");
+		      console.error("Graph error: ",e);
+		      throw e;
+		    }
+			console.log("Trying to draw: ", inputGraph.value);
+			console.log("Result: ", result);
+		    //now we result stuff
+		    if (result) {
+
+		      // Cleanup old graph
+		      var svg = d3.select("svg");
+
+		      var renderer = new dagreD3.Renderer();
+
+		      // Handle debugAlignment
+		      renderer.postLayout(function(graph) {
+		        if (debugAlignment) {
+		          // First find necessary delta...
+		          var minX = Math.min.apply(null, graph.nodes().map(function(u) {
+		            var value = graph.node(u);
+		            return value[debugAlignment] - value.width / 2;
+		          }));
+
+		          // Update node positions
+		          graph.eachNode(function(u, value) {
+		            value.x = value[debugAlignment] - minX;
+		          });
+
+		          // Update edge positions
+		          graph.eachEdge(function(e, u, v, value) {
+		            value.points.forEach(function(p) {
+		              p.x = p[debugAlignment] - minX;
+		            });
+		          });
+		        }
+		      });
+
+		      // Uncomment the following line to get straight edges
+		      //renderer.edgeInterpolate('linear');
+
+		      // Custom transition function
+		      function transition(selection) {
+		        return selection.transition().duration(500);
+		      }
+
+		      renderer.transition(transition);
+
+		      var layout = renderer.run(result, svg.select("g"));
+		      transition(d3.select("svg"))
+		        .attr("width", layout.graph().width + 40)
+		        .attr("height", layout.graph().height + 40)
+		      d3.select("svg")
+		        .call(d3.behavior.zoom().on("zoom", function() {
+		          var ev = d3.event;
+		          svg.select("g")
+		            .attr("transform", "translate(" + ev.translate + ") scale(" + ev.scale + ")");
+		        }));
+		    }
+		  }
+		}
+
+
+	
+		var evoIDToData = {};
+
+		var singledata;
+		getOrCreateData = function(eID, individual)
+		{
+			// if(!singledata)
+			// {
+			// 	singledata = genoToPicture(objSize, individual.genome);
+			// }
+			// return singledata;
+			//return;
+			var dataURL = evoIDToData[eID];
+			if(!dataURL)
+			{
+				dataURL = "";// genoToPicture(objSize, individual.genome);
+
+				//save this info for next time
+				evoIDToData[eID] = dataURL;
+			}
+			return dataURL;
+		}
+
+		//we don't want to store a bazillion -- so this should all be pretty limited
+		var storedArtifacts = {};
+		var childrenToParents = {};
+		var evalInfo = {};
+
+		var knownLinks = {};
+		var initialFind = true;
+		var seedNodes = {};
+
+		function recursiveFindLink(wid, allArtifacts, c2p)
+		{
+			var widLinks = knownLinks[wid];
+
+			//if we know our links, send it back!
+			if(widLinks)
+				return widLinks;
+
+			//otherwise, we don't know our links -- easy, it's just the links of our parent
+			var parents = c2p[wid];
+
+			//if you don't exist or you have an empty parents array
+			//objects with no parents simply link to themselves -- pretty easy don't worry
+			if(!parents || !parents.length)
+			{
+				//we don't link to no-one ya hear?
+				var link = [wid];
+				knownLinks[wid] = link;
+				
+				if(initialFind)
+					seedNodes[wid] = true;
+
+				return link;
+			}
+
+			//wut wut in the butt -- who we link to?
+			var newWIDLink = [];
+			var noDups = {};
+
+			for(var i=0; i < parents.length; i++)
+			{
+				//we have the parent wids -- check for known link
+				var pWID = parents[i];
+
+				//if our parents exist in the population, simply add them -- yeah boyeeeeee
+				if(allArtifacts[pWID])
+				{
+					//if we haven't already, go ahead and add the parent
+					if(!noDups[pWID])
+					{
+						newWIDLink.push(pWID);
+						//like the name implies -- no dups asshole
+						noDups[pWID] = true;
+					}
+				}
+				else
+				{
+					//otherwise, go back until you find the source of the parents -- it should all be here darnit
+					//the source of a single parent might be many, so we handle the array
+					var parentLink = recursiveFindLink(pWID, allArtifacts, c2p);
+
+					//parent link now exists! congrats.
+					for(var m=0; m < parentLink.length; m++)
+					{
+						var pLink = parentLink[m];
+						if(!noDups[pLink])
+						{
+							newWIDLink.push(pLink);
+							//like the name implies -- no dups asshole
+							noDups[pLink] = true;
+						}
+					}
+				}
+
+
+				
+			}
+
+			//save them links yo, it's all about links here
+			knownLinks[wid] = newWIDLink;
+
+			//now we've built our link -- return it
+			//recursive power activate!!!!
+			return newWIDLink;
+		}
+
+		//here we goooooo
+		function handleEvolutionData(evoData)
+		{	
+			//lets just check this out manuall -- console log
+			// console.log(evoData);
+
+
+			var evaluations = evoData.evaluations;
+			var artifacts = evoData.artifacts;
+			var c2p = evoData.childrenToParents;
+
+			var newGenomes =false;
+			
+			// console.log(typeof artifacts);
+			// console.log(evoData);
+
+			//let's save all the artifacts -- if you don't mind
+			//no duplicates will be sent but to be safe, we'll only save if we need to
+			for(var wid in artifacts)
+			{
+				newGenomes = true;
+				if(!storedArtifacts[wid])
+					storedArtifacts[wid] = artifacts[wid];
+			}
+
+			for(var wid in evaluations)
+			{
+				var eval = evaluations[wid];
+
+				//parse the body, then let's build a graph or something
+				// var body = JSON.parse(eval.iesorBody);
+
+				//this is pretty much all we need
+				evalInfo[wid] = {frames: eval.iesorFrames, distance: eval.iesorDistance, fitness: eval.realFitness};
+			}
+
+			for(var wid in c2p)
+			{
+				//make sure we have the full chain
+				if(childrenToParents[wid])
+				{
+					//just concat -- I don't care
+					childrenToParents[wid] = childrenToParents[wid].concat(c2p[wid]);
+				}
+				else
+				{
+					//grab the parental info -- useful for chainin our graphs
+					childrenToParents[wid] = c2p[wid];
+				}
+			}
+
+
+			//for all the new individuals, find who you link to (if anyone)
+			for(var wid in artifacts)
+			{
+				//this will setup our links for the graphing expedition
+				recursiveFindLink(wid, storedArtifacts, childrenToParents);
+			}
+
+			//no more of that, thank you
+			initialFind = false;
+			if(newGenomes)
+			{
+				console.log("Artifacats processed, building graph...");
+				buildGraph(storedArtifacts, evalInfo, childrenToParents);
+			}
+		}
+
+		function buildGraph(allArtifacts, allEvals, c2p)
+		{
+			var buildGraph = "digraph {";
+
+			//rebuild from empty variables
+			var gID = 0;
+			var graphNames = {};
+			function nextGraphNode() { return gID++;}
+
+			var maxDistance = 0;
+
+			var evalProp = "fitness";
+
+			for(var wid in allEvals)
+			{
+				//grab farthest walkers -- or most efficient
+				// maxDistance = Math.max(maxDistance, allEvals[wid].distance);
+				maxDistance = Math.max(maxDistance, allEvals[wid][evalProp]);
+			}
+
+			//seed nodes are different
+			for(var wid in seedNodes)
+			{
+				//var graphi info
+				var graphID = nextGraphNode();
+
+				var width = 45;
+				var height = 25;
+
+				//attach graph to wid
+				graphNames[wid] = {graphID: graphID, canvasWidth: width, canvasHeight: height};
+
+				var elementStyle = "";// "width: " + width + "px; height: " + height + "px;";
+
+				//must add special graph node for the seeds
+				var line = (graphID + ' [label=\"<div id=\'' + wid + '\' class=\'normal'  +  '\' style=\'' + elementStyle + " margin: 10px;" + '\' >Original</div>\"];\n');
+				
+				buildGraph += line;
+			}
+
+			//for each artifact, create a box on the screen -- for now, just set size to be proportional to fitness
+			for(var wid in allArtifacts)
+			{
+				//seeds are different in this display
+				if(seedNodes[wid])
+					continue;
+
+				var graphID = nextGraphNode();
+
+				//grab the distance
+				var evalFraction = allEvals[wid][evalProp]/maxDistance;
+
+				var width = 100*(1+evalFraction);
+				var height = 100*(1+evalFraction);
+
+				//attach graph to wid
+				graphNames[wid] = {graphID: graphID, canvasWidth: width, canvasHeight: height};
+
+				var elementStyle = "width: " + width + "px; height: " + height + "px;";
+				var line = (graphID + ' [label=\"<div id=\'' + wid + '\' class=\'normal'  +  '\' style=\'' + elementStyle + " margin: 10px;" + '\' />\"];\n');
+
+				// console.log("Line: ", line)
+				buildGraph += line;
+			}
+
+
+			//now lets connection everything
+			for(var wid in allArtifacts)
+			{
+				//let's do some linking -- we got this dawg
+				var kLink = knownLinks[wid];
+
+				for(var i=0; i < kLink.length; i++)
+				{
+					var lineage = kLink[i];
+					//no harm in skipping -- it's encouraged! self links are silly
+					if(lineage == wid)
+						continue;
+
+					if(!graphNames[lineage])
+						continue;
+
+					//source is the parent graph node id
+					var srcID = graphNames[lineage].graphID;
+					//target is the child ?
+					var tgtID = graphNames[wid].graphID;
+					//from parent to child all links must flow
+
+					//add some links, friend
+					buildGraph += (srcID+ " -> " + tgtID + ";");
+				}
+
+			}
+
+			//now we need to deal with edges
+			//grab all our links
+			// for(var i=0; i < artifactLinks.length; i++)
+			// {
+			// 	var aLink = artifactLinks[i];
+			// 	//from the links we can figure out all our nodes and labels
+			// 	buildGraph += (graphNames[aLink.source].graphID + " -> " + graphNames[aLink.target].graphID + ";");
+			// }
+
+			buildGraph += "}";
+			inputGraph.value = buildGraph;
+			// console.log(inputGraph);
+			tryDraw();
+
+			for(var wid in allArtifacts){
+
+				var cid =  wid + "-canvas";
+				var cidElement = document.getElementById(cid);
+				
+				//we don't dup here -- no sir
+				if(cidElement)
+					continue;
+
+
+				console.log("Going on to make the canvas display.");
+
+				var graphInfo = graphNames[wid];
+				var animationFrames = evalInfo[wid].frames;	
+
+				var canvasWidth = graphInfo.canvasWidth;
+				var canvasHeight = graphInfo.canvasHeight;
+
+				var cwD2 = canvasWidth/2;
+				var chD2 = 3*canvasHeight/4;
+
+				var can = document.createElement('canvas');
+				can.setAttribute("id", cid);
+				can.setAttribute("width", canvasWidth);
+				can.setAttribute("height", canvasHeight);
+
+				//yayayayayayay
+				document.getElementById(wid).appendChild(can)
+
+				//now we need to create an animation out of our frames -- i'll settle for setting up canvas
+				var firstFrame = JSON.parse(animationFrames[0]);
+
+
+				var canvas = new fabric.StaticCanvas(cid, {
+                    // hoverCursor: 'pointer',
+                    // selection: false,
+                    // perPixelTargetFind: true,
+                    // targetFindTolerance: 5
+                });
+
+                //don't render when we just add stuff you know?????
+                canvas.renderOnAddRemove = false;
+
+                insertObjects = firstFrame.shapes;
+                 
+                var radToDeg = 180.0/Math.PI;
+
+	            for(var id in insertObjects) {
+
+	                var fabObj, props;
+	                var canvasObj = insertObjects[id];
+
+	                var polyPoints, tl, bodyOffset, color, wh;
+
+	                var radius, center;
+
+	                switch (canvasObj.type) {
+	                    case "Rect":
+
+	                        bodyOffset = canvasObj.bodyOffset;
+	                        wh = canvasObj.widthHeight;
+	                        tl = canvasObj.topLeft;
+	                        color = canvasObj.color || '#f55';
+
+	                        props = { 
+	                        	top: chD2 - tl.y - bodyOffset.y, 
+	                        	left: topLeft.x + cwD2 + bodyOffset.x,
+	                            width: parseFloat(wh.width), height:  parseFloat(wh.height), fill: color,
+	                            angle: radToDeg*canvasObj.rotation 
+	                        };
+
+	                            //boom biatch
+	                            console.log("Print it rect: ", props);
+
+	                        //only create object 
+	                        if (!fabObj)
+	                            fabObj = new fabric.Rect(props);
+
+	                        break;
+	                    case "Polygon":
+
+	                    //polygon stuff -- just invert y?
+	                        var bodyOffset = canvasObj.bodyOffset;
+
+	                        for(var p=0; p < canvasObj.points.length; p++)
+	                        {
+	                            canvasObj.points[p].y *= -1.0;
+	                        }
+
+	                        color = canvasObj.color || "#43B";
+
+
+	                        props = {
+	                            top: chD2 - bodyOffset.y,
+	                            left: cwD2 + bodyOffset.x,
+	                            fill: color, angle: radToDeg*canvasObj.rotation 
+	                        };
+
+	                            console.log("Print it poly: ", props);
+	                        //only create object
+                            fabObj = new fabric.Polygon(canvasObj.points, props);
+
+
+	                        break;
+	                    case "Circle":
+
+	                        var bodyOffset = canvasObj.bodyOffset;
+
+	                        center = canvasObj.center;
+	                        radius = (canvasObj.radius);
+	                        color = canvasObj.color || 'green';
+
+	                        var stroke = canvasObj.stroke || '#147';
+	                        var sw = .5;
+
+	                        props = { 
+	                        	top: chD2 - center.y - bodyOffset.y - sw/2,
+	                        	left: cwD2 + center.x + bodyOffset.x - sw/2,
+	                        	radius: radius,
+	                            fill: color,
+	                            stroke: stroke,
+	                            strokeWidth: sw
+	                        };
+	                            console.log("Print it circle: ", props);
+
+                            fabObj = new fabric.Circle(props);
+
+	                        break;
+	                }
+
+	                canvas.add(fabObj);
+
+	            }
+
+				 //now render the new canvas 
+	            canvas.renderAll();
+
+			}
+
+
+
+		}
+
+
+	}
+			
+
+	      //   				var fullNodes = [];
+	      //   				var nodes = {};
+
+	      //   				var nameToWid = {};
+
+	      //   				for(var wid in fullNames)
+	      //   					nameToWid[fullNames[wid]] = wid;
+
+	        			
+	      //   				var buildGraph = "digraph {";
+
+	      //   				var gID = 0;
+	      //   				var graphNames = {};
+
+	      //   				for(var wid in fullNames)
+	      //   				{
+	      //   					var name = fullNames[wid];
+	      //   					var graphID = gID++;
+
+	      //   					graphNames[name] = {wid: wid, graphID: graphID};
+	      //   					var line = (graphID + ' [label=\"<div id=\'' + wid + '\' class=\'normal'  +  '\' style=\'' + elementStyle + " margin: 10px;" + '\' />\"];');
+	      //   					console.log("Line: ", line)
+	      //   					buildGraph += line;
+	      //   				}
+
+    			// 			//now we need to deal with edges
+							// //grab all our links
+	      //   				for(var i=0; i < artifactLinks.length; i++)
+	      //   				{
+	      //   					var aLink = artifactLinks[i];
+	      //   					//from the links we can figure out all our nodes and labels
+	      //   					buildGraph += (graphNames[aLink.source].graphID + " -> " + graphNames[aLink.target].graphID + ";");
+	      //   				}
+
+	      //   				buildGraph += "}";
+	      //   				inputGraph.value = buildGraph;
+	      //   				tryDraw();
+
+							
+
+	        				//now lets draw in the div objects
+	        				// for(var wid in artifacts)
+	        				// {
+	        				// 	var imgHolder = document.querySelector('#' + wid);
+
+        					// 	var dataURL = getOrCreateData(wid, artifacts[wid]);
+
+	        				// 	imgHolder.innerHTML = "<img src=\"" + dataURL + "\" ></img>";
+	        				// }
+
+
+
+
+
+
+	
+	</script>
+
+
+
+
+</body>
+</html>

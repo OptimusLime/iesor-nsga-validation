@@ -1,0 +1,22 @@
+{
+  "name": "socketUI",
+  "private" : "true",
+  "version": "0.0.1",
+  "description": "Runs a socket or websocket server, and passes info to and from our UI object.",
+  "keywords": [
+    "Evolution",
+    "Artificial Neural Networks",
+    "WIN"
+  ],
+  "author": {
+    "name": "Paul Szerlip",
+    "email": "Paul.Szerlip@cs.ucf.edu",
+    "url": "http://designforcode.com/"
+  },
+  "main": "socketUI.js",
+  "dependencies" : {
+    "ws" : "*"
+  },
+  "bugs": "https://github.com/OptimusLime/win-nsga/issues",
+  "license": "MIT"
+}

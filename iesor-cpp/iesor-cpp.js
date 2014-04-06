@@ -62,16 +62,28 @@ function iesorcpp(backbone, globalConfig, localConfig)
 	{
 		var behaviors = eval.behaviors;
 
+		//normalize the morph behavior -- don't need super large numbers for now reason
+		var maxWidthD2 = parseFloat(morphJSON.maxWidth)/2.0;
+		var maxHeigthD2 = parseFloat(morphJSON.maxHeight)/2.0;
+
+		//just a reasonable guess at max mass
+		var massAdjust = 300.0;
+
 		//width/height are the max distances between top and bottom
-		behaviors[0] = parseFloat(morphJSON.width);
-		behaviors[1] = parseFloat(morphJSON.height);
+		behaviors[0] = parseFloat(morphJSON.width)/maxWidthD2;
+		behaviors[1] = parseFloat(morphJSON.height)/maxHeigthD2;
 
 		//mass is the sum of the nodes + sum of the lenght of the connections
-		behaviors[2] = parseFloat(morphJSON.mass);
+		behaviors[2] = parseFloat(morphJSON.mass)/massAdjust;
 
 		//included -- not sure how much it helps
-		behaviors[3] = parseFloat(morphJSON.startX);
-		behaviors[4] = parseFloat(morphJSON.startY);
+		behaviors[3] = parseFloat(morphJSON.startX)/maxWidthD2;;
+		behaviors[4] = parseFloat(morphJSON.startY)/maxHeigthD2;
+
+		// self.log("\n\n Adjusted morph width: ", behaviors[0], " adjusted height: ", behaviors[1]);
+		// self.log("Adjusted mass: ", behaviors[2]);
+		// self.log("Adjusted morph startX: ", behaviors[3], " adjusted startY: ", behaviors[4]);
+
 	}
 
 	self.neatGenomeToByteCode = function(ngJSON)
@@ -136,18 +148,24 @@ function iesorcpp(backbone, globalConfig, localConfig)
 				//we load the body into the world after already constructing this -- keep in mind, this is double hyperneat-ing
 				self.log("Warning, iesor-cpp now constructs the body, checks it, then constructs and loads the body into the world again!");
 
+				var emptyBodyCount = 0;
+				var allCount = 0;
+
 				try
 				{
 					//let's do an eval -- write now this is synchronous
 					for(var index in indexArtifacts)
 					{
+						//inc our count
+						allCount++;
+
 						var tArtifact = indexArtifacts[index];
 
 						//this is the true object -- we need to convert into the world 
 						var genome = tArtifact.genome;
 
 						//default eval
-						var baseEval = {realFitness: 0.0000001, behaviors : defaultBehavior(), complexity: genome.connections.length + genome.nodes.length};
+						var baseEval = {realFitness: 0.0000001, behaviors : defaultBehavior(), complexity: genome.connections.length + genome.nodes.length, iesorDistance: 0};
 
 						//evaluation for the index
 						evals[index] = baseEval;
@@ -163,18 +181,25 @@ function iesorcpp(backbone, globalConfig, localConfig)
 						var iWorld = getNextWorld(); // this will clean everything up for us!
 
 						//now we load the body first
-						var bodyJSON = iWorld.convertNetworkToBody(byteString);
+						var bodyString = iWorld.convertNetworkToBody(byteString);
 
 						//if we don't get anything back -- errors all over the place
-						bodyJSON = JSON.parse(bodyJSON);
+						bodyJSON = JSON.parse(bodyString);
 
 						//now we check if the body even exists -- if it doesn't don't bother simulation
 						if(!bodyJSON.nodes.length)
 						{
 							//this eval was a bust -- it's empty
-							self.log("Empty body: ", tArtifact.wid, " bjson: ", bodyJSON);
+							emptyBodyCount++;
 							continue;
 						}
+
+						//pass the body into the eval for future use -- this gun by fun
+						// baseEval.iesorBody = bodyString;
+						baseEval.iesorFrames = [];
+
+						//how many frames of animation to preview
+						var frameCount = 5;
 
 						//string with our morph info inside
 						var morphString = iWorld.loadBodyFromNetwork(byteString);
@@ -194,6 +219,16 @@ function iesorcpp(backbone, globalConfig, localConfig)
 						var com = {x: parseFloat(morphology.comX), y: parseFloat(morphology.comY)};
 
 						//now we need to pull out distance traveled for the object
+
+						var simtime = simTimeMS/frameCount;
+						for(var f=0; f < frameCount; f++)
+						{
+							//simulate for the simtime/frame count
+							iWorld.simulateWorldMS(simtime);
+
+							//pull the drawing info -- just a single frame worth -- as many frames as requested -- in string form
+							baseEval.iesorFrames.push(iWorld.getWorldDrawList());
+						}
 
 						//simulate for 3.5 seconds by default
 						//tell the wrold to simulate
@@ -216,8 +251,11 @@ function iesorcpp(backbone, globalConfig, localConfig)
 						//then finally set distance/mass -- for efficiency
 						baseEval.realFitness = efficiency ? totalDist/mass : totalDist;
 						baseEval.fitness = efficiency ? totalDist/mass : totalDist; 
+						baseEval.iesorDistance = totalDist;
 
 					}
+
+					self.log("Empty bodies ", emptyBodyCount, " out of ", allCount, "-- %: ", emptyBodyCount/allCount);
 
 					finished(undefined, evals);
 

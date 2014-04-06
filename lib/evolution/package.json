@@ -1,0 +1,19 @@
+{
+  "name": "iesor-evolution",
+  "private" : "true",
+  "version": "0.0.1",
+  "description": "Start/stop evolution stuff -- and with some publishing?",
+  "keywords": [
+    "Evolution",
+    "Artificial Neural Networks",
+    "WIN"
+  ],
+  "author": {
+    "name": "Paul Szerlip",
+    "email": "Paul.Szerlip@cs.ucf.edu",
+    "url": "http://designforcode.com/"
+  },
+  "main": "iesor-evolution.js",
+  "bugs": "https://github.com/OptimusLime/win-nsga/issues",
+  "license": "MIT"
+}
