@@ -2,7 +2,7 @@
   "name": "iesorUI",
   "description": "Making the canvas elements readily available.",
   "version": "0.0.1",
-  "local" : ["canvas-display"],
+  "local" : ["canvas-display", "publishUI"],
   "paths" : ["libs"],
   "dependencies": {
   },

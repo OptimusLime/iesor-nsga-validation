@@ -55,8 +55,10 @@
 	  color: red;
 	}
 	</style>
+	<link rel="stylesheet" type="text/css" media="screen" href="/build/build.css" />
 </head>
 <body class="flexcenter">
+
 
 	<!-- <input id="iTitle" placeholder="SVG File Name"></input> -->
 	<!-- <button id="bSvgSave">Save SVG to File</button> -->
@@ -68,11 +70,12 @@
   		<g transform="translate(20, 20)"/>
 	</svg>
 
-	<script src="http://d3js.org/d3.v3.min.js"></script>
+	<script src="/js/d3.v3.min.js"></script>
 	<script src="/js/dagre-d3.min.js"></script>
 	<script src="/js/graphlib-dot.min.js"></script>
     <script type="text/javascript" src="/js/fabric.min.js"></script>
     <script type="text/javascript" src="/build/build.js"></script>
+    <script type="text/javascript" src="/build/build.css"></script>
 
 	<!-- // <script type="text/javascript" src="http://cpettitt.github.io/project/dagre-d3/latest/dagre-d3.min.js"></script> -->
 
@@ -96,8 +99,16 @@
 	window.onload = function()
 	{
 
+		var w = window,
+		    d = document,
+		    e = d.documentElement,
+		    g = d.getElementsByTagName('body')[0],
+		    x = w.innerWidth || e.clientWidth || g.clientWidth,
+		    y = w.innerHeight|| e.clientHeight|| g.clientHeight;
+
 		//require our canvas display
 		var canvasDisplay = require('canvas-display');
+		var publishUI = require('publishUI');
 
 		var wsServerLocation = "ws://localhost:9000";
 
@@ -167,6 +178,12 @@
 		//whatever, gonna get rid of this soon
 		var debugAlignment;
 
+
+		var pubSize = {width: 250, height: 250};
+
+		//set up publish UI
+		var pubEmitter = new publishUI({objectSize: pubSize});
+
 		/* Example */
 		// digraph {
 		//     /* Note: HTML labels do not work in IE, which lacks support for &lt;foreignObject&gt; tags. */
@@ -178,6 +195,9 @@
 		//     C -&gt; E;
 		//     A -&gt; D [label="<div>A multi-rank <span style='color:blue;'>HTML</span> edge!</div>"];
 		// }
+		d3.select("svg")
+		        .attr("width", x - 2*8)
+		        .attr("height", y - 2*8)
 
       var renderer = new dagreD3.Renderer();
 
@@ -236,10 +256,12 @@
 
 		      renderer.transition(transition);
 
+		      console.log("Client x: ", x, " cly y: ", y);
+
 		      var layout = renderer.run(result, svg.select("g"));
-		      transition(d3.select("svg"))
-		        .attr("width", layout.graph().width + 40)
-		        .attr("height", layout.graph().height + 40)
+		      // transition(d3.select("svg"))
+		        // .attr("width", Math.max(x - 2*8,  layout.graph().width + 40))
+		        // .attr("height", Math.max(y - 2*8, layout.graph().height + 40))
 		      d3.select("svg")
 		        .call(d3.behavior.zoom().on("zoom", function() {
 		          var ev = d3.event;
@@ -556,10 +578,25 @@
 
 			// canvasDisplay()
 
+			function attachPublish(wid, widElement)
+			{
+				widElement.addEventListener('click', function()
+				{
+					//launch the view with a wid
+					pubEmitter.launchPublishModal(wid);
+					//the rest is up to other UI elements -- i forget which right this moment
+				})
+			}
 
-		      var svg =  document.getElementById("d3Phylogeny");
+			//need this for a Chrome hack for updating svgs on the screen
+		    var svg =  document.getElementById("d3Phylogeny");
 
 			for(var wid in allArtifacts){
+
+				//add a click event to the whole div object
+				var widElement = document.getElementById(wid);
+				attachPublish(wid, widElement);
+
 
 				var cid =  wid + "-canvas";
 				var cidElement = document.getElementById(cid);
