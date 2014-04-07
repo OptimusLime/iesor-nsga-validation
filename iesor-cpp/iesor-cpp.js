@@ -86,7 +86,6 @@ function iesorcpp(backbone, globalConfig, localConfig)
 
 	self.initialize = function(finished)
 	{
-		
 
 	 	iesorPool =	getIESoRWorlds(self.iesorPoolSize);
 

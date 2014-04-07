@@ -22,22 +22,6 @@
 	  font-size: 14px;
 	}
 
-	.node rect {
-	  stroke: #333;
-	  stroke-width: 2px;
-	  fill: #fff;
-	}
-
-	.edgeLabel rect {
-	  fill: #fff;
-	}
-
-	.edgePath path {
-	  stroke: #333;
-	  stroke-width: 1.5px;
-	  fill: none;
-	}
-
 	h1, h2 {
 	  color: #333;
 	}
@@ -70,9 +54,6 @@
   		<g transform="translate(20, 20)"/>
 	</svg>
 
-	<script src="/js/d3.v3.min.js"></script>
-	<script src="/js/dagre-d3.min.js"></script>
-	<script src="/js/graphlib-dot.min.js"></script>
     <script type="text/javascript" src="/js/fabric.min.js"></script>
     <script type="text/javascript" src="/build/build.js"></script>
     <script type="text/javascript" src="/build/build.css"></script>
@@ -102,10 +83,9 @@
 	{
 		if(cb)
 			_simSocketCallbacks[id] = cb;
-	}  
+	}
 
-	//grab query params from http location
-	var urlParams;
+    var urlParams;
     (window.onpopstate = function () {
         var match,
                 pl     = /\+/g,  // Regex for replacing addition symbol with a space
@@ -131,6 +111,8 @@
 		//require our canvas display
 		var canvasDisplay = require('canvas-display');
 		var publishUI = require('publishUI');
+
+
 
 		var wsServerLocation = "ws://localhost:9000";
 		var simServerLocation = "ws://localhost:9001";
@@ -246,8 +228,7 @@
 				else if(message.event == "socketID")
 				{
 					socketID = message.socketID;
-					//send in potential branching object
-					sendJSONMessage(ws, {event: "uiControl:startUIEvolution", arguments: [socketID, urlParams['branch']]});
+					sendJSONMessage(ws, {event: "uiControl:startUIEvolution", arguments: [socketID]});
 				}
 				else if(message.event == "evolutionData")
 				{
