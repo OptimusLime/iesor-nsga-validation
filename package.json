@@ -28,6 +28,8 @@
     "cppnjs" : "*",
     "colors": "*",
     "neatjs" : "*",
+    "win-publish": "*",
+    "win-query": "*",
     "win-backbone": "*",
     "win-novelty": "*",
     "win-gen": "*",

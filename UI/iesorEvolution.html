@@ -442,6 +442,8 @@
 
 		pubEmitter.on('publishArtifact', function(wid, meta, finished)
 		{
+			//no more simulating IF you close?
+			isSimulating = false;
 			finished();
 		});
 
@@ -450,7 +452,7 @@
 			//stop calling simulate
 			//we shall store it inside ediv
 			isSimulating = false;
-		})
+		});
 
 
 		function recursiveFindLink(wid, allArtifacts, c2p, hopProp)

@@ -1,0 +1,6 @@
+{
+    "genome":
+        {"type": "String", "ref" : "NEATGenotype"},
+
+    "environment": "String"
+}
