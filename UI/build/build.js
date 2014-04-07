@@ -247,6 +247,7 @@ function canvassetup(canvasID, framesToDisplay, canvasInfo, svg, startFrame)
 
     //all our fab objects are belong to us
     var _iFabObjects = {};
+    var _iJointObjects = {};
 
 	//do we want to pause/end animation?
 	var shouldEndAnimation = false;
@@ -281,6 +282,7 @@ function canvassetup(canvasID, framesToDisplay, canvasInfo, svg, startFrame)
 		{
 			//get rid of all the fab objects
 			_iFabObjects = {};
+			_iJointObjects = {};
 
 			//then clear the canvas
 			canvas.clear();
@@ -334,7 +336,10 @@ function canvassetup(canvasID, framesToDisplay, canvasInfo, svg, startFrame)
 		var xCOM = 0;
 		var x_count =0;
 
-
+		var minInsertIndex = Number.MAX_VALUE;
+		// var fabPolyLine =  new fabric.Polyline(info.points, {fill: this.lineColor, stroke:this.lineColor, strokeWidth:this.lineWidth, opacity: .7});
+  //   	fabPolyLine.drawID = joint.drawID;
+        
         //ids are consistent across frames so only create objects once
 		for(var id in insertObjects) {
 
@@ -344,7 +349,8 @@ function canvassetup(canvasID, framesToDisplay, canvasInfo, svg, startFrame)
 			var radius, center;
 			var props;
 
-			fabObj = _iFabObjects[id];
+			var splitID = id.split("_")[0];
+			fabObj = _iFabObjects[splitID];
 
 			//caputre whether or not this existed after shapes are created -- we need to know if we're adding or updating
 			var exists = (fabObj ? true : false); 
@@ -376,10 +382,11 @@ function canvassetup(canvasID, framesToDisplay, canvasInfo, svg, startFrame)
 
 					if(!fabObj)
 				    	fabObj = new fabric.Circle(props);
+
 				    break;
 			}
 
-			if(id != "ground"){
+			if(splitID != "ground"){
 				xCOM += props.left;
 				x_count++;
 			}
@@ -388,7 +395,11 @@ function canvassetup(canvasID, framesToDisplay, canvasInfo, svg, startFrame)
             	updateObject(fabObj, props);
             else
             {
-        	  	_iFabObjects[id] = fabObj;
+        	  	_iFabObjects[splitID] = fabObj;
+        	  	
+        	  	if(splitID != "ground")
+        	  		minInsertIndex = Math.min(minInsertIndex, canvas.getObjects().length);
+        	  	fabObj.iesorID = splitID;
                 canvas.add(fabObj);
             }
         }	
@@ -399,6 +410,79 @@ function canvassetup(canvasID, framesToDisplay, canvasInfo, svg, startFrame)
         //set phasers to zoom moderately!
         //move center of mass if necessary
 		setZoom(zoomX, zoomY, centerCamera ? xCOM/x_count : undefined);
+
+
+		//we actually draw the joints AFTER the movement -- that way we are placed properly 
+        var joints = frame.joints;
+
+        // console.log(Object.keys(insertObjects));
+        // console.log(joints);
+
+        for(var id in joints)
+        {
+        	var jLink = joints[id];
+        	// console.log(jLink);
+
+        	var sourceObj = _iFabObjects[jLink.sourceID];
+        	var targetObj = _iFabObjects[jLink.targetID];
+
+        	var jointFab = _iJointObjects[id];
+
+        	var props, jPoints;
+
+        	// if(sourceObj && targetObj)
+        	// {
+    		//let's draw them together -- shall we?
+    		//we need the center of the object as our point
+    		var srcPt = {
+    			x: sourceObj.left + sourceObj.radius, 
+    			y: sourceObj.top - sourceObj.radius
+    		};
+
+    		var tgtPt = {
+    			x: targetObj.left + targetObj.radius, 
+    			y: targetObj.top - targetObj.radius
+    		}
+
+    		jPoints = [];
+    		jPoints.push(srcPt, tgtPt);
+
+    		props = {
+    			// top : 0,
+    			// left : 0,
+    			// points:points,
+    			fill : canvasInfo.lineColor || '#000',// '#B2B212';
+    			strokeWidth : canvasInfo.strokeWidth || 3,// '#B2B212';
+    			stroke : canvasInfo.lineColor || '#000',//FFC704// '#B2B212';
+    			opacity : canvasInfo.jointOpacity || 1.0
+    		};
+
+        		//now add or update the props
+        		// console.log("Points: ", points);
+
+        	// }
+        	// else
+        	// 	continue;
+
+
+        	if(jointFab)
+        	{
+        		jointFab.points = jPoints;
+        		updateObject(jointFab, props);
+        	}
+        	else
+        	{
+        		var clonePoints = JSON.parse(JSON.stringify(jPoints));
+        		jointFab = new fabric.Polyline(clonePoints, props);
+        		jointFab.points = jPoints;
+        		jointFab.skipZoom = true;
+        		_iJointObjects[id] = jointFab;
+
+        		//insert jPoints at appropriate index please
+        		canvas.getObjects().splice(minInsertIndex, 0, jointFab);
+        	}
+        }
+
 
 	}
 
@@ -490,6 +574,10 @@ function canvassetup(canvasID, framesToDisplay, canvasInfo, svg, startFrame)
 			    left = object.left,
 			    top = object.top;
 
+			    //don't zoom something you don't want to!
+			    if(object.skipZoom)
+			    	continue;
+
 			// preserve the original dimensions.
 			object.original_scaleX = (object.original_scaleX == undefined) ? scaleX : object.original_scaleX;
 			object.original_scaleY = (object.original_scaleY == undefined) ? scaleY : object.original_scaleY;
@@ -501,7 +589,7 @@ function canvassetup(canvasID, framesToDisplay, canvasInfo, svg, startFrame)
 			object.left = (object.original_left - cwD2) * zoomX + cwD2;
 			object.top = (object.original_top - chD2)* zoomY + chD2;
 
-			if(key != "ground" && xCOM)
+			if(object.iesorID != "ground" && xCOM)
 			{
 				object.left -= (xCOM - cwD2)*zoomX;
 				// object.top -= com.y;
