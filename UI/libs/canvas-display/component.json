@@ -1,0 +1,12 @@
+{
+  "name": "canvas-display",
+  "description": "Deal with canvas object display.",
+  "version": "0.0.1",
+  "dependencies": {
+  },
+  "scripts": [
+    "canvas-display.js"
+  ],
+  "main": "canvas-display.js",
+  "license": ["MIT"]
+}

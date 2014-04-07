@@ -72,6 +72,7 @@
 	<script src="/js/dagre-d3.min.js"></script>
 	<script src="/js/graphlib-dot.min.js"></script>
     <script type="text/javascript" src="/js/fabric.min.js"></script>
+    <script type="text/javascript" src="/build/build.js"></script>
 
 	<!-- // <script type="text/javascript" src="http://cpettitt.github.io/project/dagre-d3/latest/dagre-d3.min.js"></script> -->
 
@@ -94,6 +95,10 @@
 
 	window.onload = function()
 	{
+
+		//require our canvas display
+		var canvasDisplay = require('canvas-display');
+
 		var wsServerLocation = "ws://localhost:9000";
 
 		var socketID;
@@ -174,6 +179,8 @@
 		//     A -&gt; D [label="<div>A multi-rank <span style='color:blue;'>HTML</span> edge!</div>"];
 		// }
 
+      var renderer = new dagreD3.Renderer();
+
 		function tryDraw() {
 
 		  var result;
@@ -195,30 +202,29 @@
 		      // Cleanup old graph
 		      var svg = d3.select("svg");
 
-		      var renderer = new dagreD3.Renderer();
 
 		      // Handle debugAlignment
-		      renderer.postLayout(function(graph) {
-		        if (debugAlignment) {
-		          // First find necessary delta...
-		          var minX = Math.min.apply(null, graph.nodes().map(function(u) {
-		            var value = graph.node(u);
-		            return value[debugAlignment] - value.width / 2;
-		          }));
+		      // renderer.postLayout(function(graph) {
+		      //   if (debugAlignment) {
+		      //     // First find necessary delta...
+		      //     var minX = Math.min.apply(null, graph.nodes().map(function(u) {
+		      //       var value = graph.node(u);
+		      //       return value[debugAlignment] - value.width / 2;
+		      //     }));
 
-		          // Update node positions
-		          graph.eachNode(function(u, value) {
-		            value.x = value[debugAlignment] - minX;
-		          });
+		      //     // Update node positions
+		      //     graph.eachNode(function(u, value) {
+		      //       value.x = value[debugAlignment] - minX;
+		      //     });
 
-		          // Update edge positions
-		          graph.eachEdge(function(e, u, v, value) {
-		            value.points.forEach(function(p) {
-		              p.x = p[debugAlignment] - minX;
-		            });
-		          });
-		        }
-		      });
+		      //     // Update edge positions
+		      //     graph.eachEdge(function(e, u, v, value) {
+		      //       value.points.forEach(function(p) {
+		      //         p.x = p[debugAlignment] - minX;
+		      //       });
+		      //     });
+		      //   }
+		      // });
 
 		      // Uncomment the following line to get straight edges
 		      //renderer.edgeInterpolate('linear');
@@ -277,8 +283,9 @@
 		var initialFind = true;
 		var seedNodes = {};
 
-		function recursiveFindLink(wid, allArtifacts, c2p)
+		function recursiveFindLink(wid, allArtifacts, c2p, hopProp)
 		{
+			hopProp.hops++;
 			var widLinks = knownLinks[wid];
 
 			//if we know our links, send it back!
@@ -306,6 +313,11 @@
 			var newWIDLink = [];
 			var noDups = {};
 
+			var noParents = true;
+
+			//who is the closest parent
+			var minHops = Number.MAX_VALUE;
+			var minDistanceParentLink;
 			for(var i=0; i < parents.length; i++)
 			{
 				//we have the parent wids -- check for known link
@@ -314,6 +326,8 @@
 				//if our parents exist in the population, simply add them -- yeah boyeeeeee
 				if(allArtifacts[pWID])
 				{
+					//found a parent
+					noParents = false;
 					//if we haven't already, go ahead and add the parent
 					if(!noDups[pWID])
 					{
@@ -324,25 +338,33 @@
 				}
 				else
 				{
+					var hCount = {hops:0};
 					//otherwise, go back until you find the source of the parents -- it should all be here darnit
 					//the source of a single parent might be many, so we handle the array
-					var parentLink = recursiveFindLink(pWID, allArtifacts, c2p);
+					var parentLink = recursiveFindLink(pWID, allArtifacts, c2p, hCount);
 
-					//parent link now exists! congrats.
-					for(var m=0; m < parentLink.length; m++)
+					if(hCount.hops < minHops)
 					{
-						var pLink = parentLink[m];
-						if(!noDups[pLink])
-						{
-							newWIDLink.push(pLink);
-							//like the name implies -- no dups asshole
-							noDups[pLink] = true;
-						}
+						minHops = hCount.hops;
+						minDistanceParentLink = parentLink;
+					}
+				}				
+			}
+			//you don't have any living relatives -- well who is the closest?
+			if(noParents){
+
+				//minparent link now exists! congrats.
+				//it's also the closest parent we could find
+				for(var m=0; m < minDistanceParentLink.length; m++)
+				{
+					var pLink = minDistanceParentLink[m];
+					if(!noDups[pLink])
+					{
+						newWIDLink.push(pLink);
+						//like the name implies -- no dups asshole
+						noDups[pLink] = true;
 					}
 				}
-
-
-				
 			}
 
 			//save them links yo, it's all about links here
@@ -408,8 +430,9 @@
 			//for all the new individuals, find who you link to (if anyone)
 			for(var wid in artifacts)
 			{
+				var hops = {hops: 0};
 				//this will setup our links for the graphing expedition
-				recursiveFindLink(wid, storedArtifacts, childrenToParents);
+				recursiveFindLink(wid, storedArtifacts, childrenToParents, hops);
 			}
 
 			//no more of that, thank you
@@ -420,6 +443,8 @@
 				buildGraph(storedArtifacts, evalInfo, childrenToParents);
 			}
 		}
+
+		var _allCanvases = {};
 
 		function buildGraph(allArtifacts, allEvals, c2p)
 		{
@@ -529,27 +554,35 @@
 			// console.log(inputGraph);
 			tryDraw();
 
+			// canvasDisplay()
+
+
+		      var svg =  document.getElementById("d3Phylogeny");
+
 			for(var wid in allArtifacts){
 
 				var cid =  wid + "-canvas";
 				var cidElement = document.getElementById(cid);
 				
 				//we don't dup here -- no sir
-				if(cidElement)
-					continue;
+				// if(cidElement)
+				// 	continue;
+				var startFrame;
+				if(_allCanvases[wid])
+				{
+				 	startFrame = _allCanvases[wid].getCurrentFrame();
+					//
+					// _allCanvases[wid].endAnimation();		
 
-
-				console.log("Going on to make the canvas display.");
+					//and that's the last we ever saw of that canvas object -- goodbye sweet friend
+				}
 
 				var graphInfo = graphNames[wid];
-				var animationFrames = evalInfo[wid].frames;	
 
 				var canvasWidth = graphInfo.canvasWidth;
 				var canvasHeight = graphInfo.canvasHeight;
 
-				var cwD2 = canvasWidth/2;
-				var chD2 = 3*canvasHeight/4;
-
+				//build the canvas element -- name it and give it the proper size
 				var can = document.createElement('canvas');
 				can.setAttribute("id", cid);
 				can.setAttribute("width", canvasWidth);
@@ -558,115 +591,176 @@
 				//yayayayayayay
 				document.getElementById(wid).appendChild(can)
 
-				//now we need to create an animation out of our frames -- i'll settle for setting up canvas
-				var firstFrame = JSON.parse(animationFrames[0]);
+				var animationFrames = evalInfo[wid].frames;	
+
+				//set up the display on its own -- it will handle everything else later
+				var cd= canvasDisplay(svg, cid, animationFrames, {
+					canvasWidth : graphInfo.canvasWidth,
+					canvasHeight : graphInfo.canvasHeight,
+					msPerFrame : 1250,
+					initialZoom : 2.5
+				}, startFrame);
+
+				//no dupes please
+				_allCanvases[wid] = cd;
+
+			}	
+
+			// 	console.log("Going on to make the canvas display.");
+
+			// 	var graphInfo = graphNames[wid];
+			// 	var animationFrames = evalInfo[wid].frames;	
+
+			// 	var canvasWidth = graphInfo.canvasWidth;
+			// 	var canvasHeight = graphInfo.canvasHeight;
+
+			// 	var cwD2 = canvasWidth/2;
+			// 	var chD2 = 3*canvasHeight/4;
+
+			// 	var can = document.createElement('canvas');
+			// 	can.setAttribute("id", cid);
+			// 	can.setAttribute("width", canvasWidth);
+			// 	can.setAttribute("height", canvasHeight);
+
+			// 	//yayayayayayay
+			// 	document.getElementById(wid).appendChild(can)
+
+			// 	//now we need to create an animation out of our frames -- i'll settle for setting up canvas
+			// 	var firstFrame = JSON.parse(animationFrames[0]);
 
 
-				var canvas = new fabric.StaticCanvas(cid, {
-                    // hoverCursor: 'pointer',
-                    // selection: false,
-                    // perPixelTargetFind: true,
-                    // targetFindTolerance: 5
-                });
+			// 	var canvas = new fabric.StaticCanvas(cid, {
+   //                  // hoverCursor: 'pointer',
+   //                  // selection: false,
+   //                  // perPixelTargetFind: true,
+   //                  // targetFindTolerance: 5
+   //              });
 
-                //don't render when we just add stuff you know?????
-                canvas.renderOnAddRemove = false;
+   //              //don't render when we just add stuff you know?????
+   //              canvas.renderOnAddRemove = false;
 
-                insertObjects = firstFrame.shapes;
+   //              insertObjects = firstFrame.shapes;
                  
-                var radToDeg = 180.0/Math.PI;
+   //              var radToDeg = 180.0/Math.PI;
 
-	            for(var id in insertObjects) {
+	  //           for(var id in insertObjects) {
 
-	                var fabObj, props;
-	                var canvasObj = insertObjects[id];
+	  //               var fabObj, props;
+	  //               var canvasObj = insertObjects[id];
 
-	                var polyPoints, tl, bodyOffset, color, wh;
+	  //               var polyPoints, tl, bodyOffset, color, wh;
 
-	                var radius, center;
+	  //               var radius, center;
 
-	                switch (canvasObj.type) {
-	                    case "Rect":
+	  //               switch (canvasObj.type) {
+	  //                   case "Rect":
 
-	                        bodyOffset = canvasObj.bodyOffset;
-	                        wh = canvasObj.widthHeight;
-	                        tl = canvasObj.topLeft;
-	                        color = canvasObj.color || '#f55';
+	  //                       bodyOffset = canvasObj.bodyOffset;
+	  //                       wh = canvasObj.widthHeight;
+	  //                       tl = canvasObj.topLeft;
+	  //                       color = canvasObj.color || '#f55';
 
-	                        props = { 
-	                        	top: chD2 - tl.y - bodyOffset.y, 
-	                        	left: topLeft.x + cwD2 + bodyOffset.x,
-	                            width: parseFloat(wh.width), height:  parseFloat(wh.height), fill: color,
-	                            angle: radToDeg*canvasObj.rotation 
-	                        };
+	  //                       props = { 
+	  //                       	top: chD2 - tl.y - bodyOffset.y, 
+	  //                       	left: topLeft.x + cwD2 + bodyOffset.x,
+	  //                           width: parseFloat(wh.width), height:  parseFloat(wh.height), fill: color,
+	  //                           angle: radToDeg*canvasObj.rotation 
+	  //                       };
 
-	                            //boom biatch
-	                            console.log("Print it rect: ", props);
+	  //                           //boom biatch
+	  //                           // console.log("Print it rect: ", props);
 
-	                        //only create object 
-	                        if (!fabObj)
-	                            fabObj = new fabric.Rect(props);
+	  //                       //only create object 
+	  //                       if (!fabObj)
+	  //                           fabObj = new fabric.Rect(props);
 
-	                        break;
-	                    case "Polygon":
+	  //                       break;
+	  //                   case "Polygon":
 
-	                    //polygon stuff -- just invert y?
-	                        var bodyOffset = canvasObj.bodyOffset;
+	  //                   //polygon stuff -- just invert y?
+	  //                       var bodyOffset = canvasObj.bodyOffset;
 
-	                        for(var p=0; p < canvasObj.points.length; p++)
-	                        {
-	                            canvasObj.points[p].y *= -1.0;
-	                        }
+	  //                       for(var p=0; p < canvasObj.points.length; p++)
+	  //                       {
+	  //                           canvasObj.points[p].y *= -1.0;
+	  //                       }
 
-	                        color = canvasObj.color || "#43B";
-
-
-	                        props = {
-	                            top: chD2 - bodyOffset.y,
-	                            left: cwD2 + bodyOffset.x,
-	                            fill: color, angle: radToDeg*canvasObj.rotation 
-	                        };
-
-	                            console.log("Print it poly: ", props);
-	                        //only create object
-                            fabObj = new fabric.Polygon(canvasObj.points, props);
+	  //                       color = canvasObj.color || "#43B";
 
 
-	                        break;
-	                    case "Circle":
+	  //                       props = {
+	  //                           top: chD2 - bodyOffset.y,
+	  //                           left: cwD2 + bodyOffset.x,
+	  //                           fill: color, angle: radToDeg*canvasObj.rotation 
+	  //                       };
 
-	                        var bodyOffset = canvasObj.bodyOffset;
+	  //                           // console.log("Print it poly: ", props);
+	  //                       //only create object
+   //                          fabObj = new fabric.Polygon(canvasObj.points, props);
 
-	                        center = canvasObj.center;
-	                        radius = (canvasObj.radius);
-	                        color = canvasObj.color || 'green';
 
-	                        var stroke = canvasObj.stroke || '#147';
-	                        var sw = .5;
+	  //                       break;
+	  //                   case "Circle":
 
-	                        props = { 
-	                        	top: chD2 - center.y - bodyOffset.y - sw/2,
-	                        	left: cwD2 + center.x + bodyOffset.x - sw/2,
-	                        	radius: radius,
-	                            fill: color,
-	                            stroke: stroke,
-	                            strokeWidth: sw
-	                        };
-	                            console.log("Print it circle: ", props);
+	  //                       var bodyOffset = canvasObj.bodyOffset;
 
-                            fabObj = new fabric.Circle(props);
+	  //                       center = canvasObj.center;
+	  //                       radius = (canvasObj.radius);
+	  //                       color = canvasObj.color || 'green';
 
-	                        break;
-	                }
+	  //                       var stroke = canvasObj.stroke || '#147';
+	  //                       var sw = .5;
 
-	                canvas.add(fabObj);
+	  //                       props = { 
+	  //                       	top: chD2 - center.y - bodyOffset.y - sw/2,
+	  //                       	left: cwD2 + center.x + bodyOffset.x - sw/2,
+	  //                       	radius: radius,
+	  //                           fill: color,
+	  //                           stroke: stroke,
+	  //                           strokeWidth: sw
+	  //                       };
+	  //                           // console.log("Print it circle: ", props);
 
-	            }
+   //                          fabObj = new fabric.Circle(props);
 
-				 //now render the new canvas 
-	            canvas.renderAll();
+	  //                       break;
+	  //               }
 
-			}
+	  //               canvas.add(fabObj);
+
+	  //           }
+
+	  //            var objects = canvas.getObjects();
+
+	  //            var zoomX = zoomY = 2.3;
+
+	  //           for(var key in objects)
+	  //           {
+
+	  //               var object = objects[key];
+	  //               var scaleX = object.scaleX,
+	  //                       scaleY = object.scaleY,
+	  //                       left = object.left,
+	  //                       top = object.top;
+
+	  //               // preserve the original dimensions.
+	  //               object.original_scaleX = (object.original_scaleX == undefined) ? scaleX : object.original_scaleX;
+	  //               object.original_scaleY = (object.original_scaleY == undefined) ? scaleY : object.original_scaleY;
+	  //               object.original_left = (object.original_left == undefined) ? left : object.original_left;
+	  //               object.original_top = (object.original_top == undefined) ? top : object.original_top;
+
+	  //               object.scaleX = object.original_scaleX * zoomX;
+	  //               object.scaleY = object.original_scaleY * zoomY;
+	  //               object.left = (object.original_left - cwD2) * zoomX + cwD2;
+	  //               object.top = (object.original_top - chD2)* zoomY + chD2;
+
+	  //               object.setCoords();
+	  //           }
+
+			// 	 //now render the new canvas 
+	  //           canvas.renderAll();
+
+			// }
 
 
 

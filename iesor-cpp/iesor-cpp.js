@@ -142,6 +142,8 @@ function iesorcpp(backbone, globalConfig, localConfig)
 
 				var efficiency = !(options.searchRawDistance || false);
 
+				var framesToSave = options.framesToSave || 7;
+
 				//evals we will return by indexed artifacts
 				var evals = {};
 
@@ -199,7 +201,7 @@ function iesorcpp(backbone, globalConfig, localConfig)
 						baseEval.iesorFrames = [];
 
 						//how many frames of animation to preview
-						var frameCount = 5;
+						var frameCount = 7;
 
 						//string with our morph info inside
 						var morphString = iWorld.loadBodyFromNetwork(byteString);
@@ -218,17 +220,25 @@ function iesorcpp(backbone, globalConfig, localConfig)
 
 						var com = {x: parseFloat(morphology.comX), y: parseFloat(morphology.comY)};
 
-						//now we need to pull out distance traveled for the object
+						//grab initial drawing
+						//pull the drawing info -- just a single frame worth
+						baseEval.iesorFrames.push(iWorld.getWorldDrawList());
 
-						var simtime = simTimeMS/frameCount;
-						for(var f=0; f < frameCount; f++)
+						//now the remainder of the frames are captured after the initial
+						if(frameCount -1 > 0)
 						{
-							//simulate for the simtime/frame count
-							iWorld.simulateWorldMS(simtime);
+							var simtime = simTimeMS/(frameCount-1);
+							for(var f=0; f < frameCount-1; f++)
+							{
+								//simulate for the simtime/frame count
+								iWorld.simulateWorldMS(simtime);
 
-							//pull the drawing info -- just a single frame worth -- as many frames as requested -- in string form
-							baseEval.iesorFrames.push(iWorld.getWorldDrawList());
+								//pull the drawing info -- just a single frame worth -- as many frames as requested -- in string form
+								baseEval.iesorFrames.push(iWorld.getWorldDrawList());
+							}
 						}
+					
+						//now we need to pull out distance traveled for the object
 
 						//simulate for 3.5 seconds by default
 						//tell the wrold to simulate
