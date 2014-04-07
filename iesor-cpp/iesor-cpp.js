@@ -10,6 +10,52 @@ var cppnAdditions = require('./cppnAdditions.js');
 
 module.exports = iesorcpp;
 
+function getIESoRWorlds(reserved)
+{
+	var rWorlds = [];
+	//let's build a small pool of iesor objects
+	for(var i=0; i < reserved; i++)
+		rWorlds.push(new iesor.iesorWorld());
+
+	return rWorlds;
+}
+
+function neatGenomeToByteCode(ngJSON)
+{
+	//grab the json object
+    var ng = ngJSON;
+
+    //if we aren't the actual genome object (with functions like compat, or mutate) -- then we need to be one
+	if(ng.compat == undefined)
+	{
+		//temporary fix for now -- in the future -- all objects coming out of gen offspring will be properly converted
+		ng = winneat.genotypeFromJSON(ng);
+	}
+
+	//decode that mofo -- make sure cppnjs is present
+    var cppn = ng.networkDecode();
+    // self.log("CPPN: ", cppn.constructor.prototype);
+
+    //special code for getting "byte" code -- no funny recursive stuff 
+    var byteCPPN = cppn.cppnToByteCode.call(cppn);
+
+    var weights = [];
+    for(var i=0; i < cppn.connections.length; i++)
+    {
+        weights.push(cppn.connections[i].weight);
+    }
+
+    return {
+        biasCount: cppn.biasNeuronCount,
+        inputCount: cppn.inputNeuronCount,
+        outputCount: cppn.outputNeuronCount,
+        nodeCount: cppn.totalNeuronCount,
+        connectionCount: cppn.connections.length,
+        weights: weights,
+        nodeOrder: byteCPPN.nodeOrder,
+        nodeArrays: byteCPPN.nodeArrays};
+};
+
 //we do validation here
 function iesorcpp(backbone, globalConfig, localConfig)
 {
@@ -26,20 +72,30 @@ function iesorcpp(backbone, globalConfig, localConfig)
 	self.log.logLevel = localConfig.logLevel || self.log.normal;
 
 	self.iesorPoolSize = localConfig.iesorPoolSize || 10;
+	// self.iesorReserveSize = localConfig.iesorReserveSize || 4;
 
-	self.initialize = function(finished)
-	{
-		//let's build a small pool of iesor objects
-		for(var i=0; i < self.iesorPoolSize; i++)
-			iesorPool.push(new iesor.iesorWorld());
-
-		//not so bad? 
-		finished();
-	}
 
 	var nextObject = 0;
 	var iesorPool = [];
 
+
+	self.initialize = function(finished)
+	{
+		
+
+	 	iesorPool =	getIESoRWorlds(self.iesorPoolSize);
+
+
+		// for(var i=0; i < self.iesorReserveSize; i++)
+		// { 
+		// 	reservePool[i] = new iesor.iesorWorld();
+		// 	reservePool[i].rID = i;
+		// }
+
+		//not so bad? 
+		finished();
+	}
+	
 	function getNextWorld()
 	{
 		nextObject++;
@@ -51,6 +107,7 @@ function iesorcpp(backbone, globalConfig, localConfig)
 
 		return ip;
 	}
+
 	function defaultBehavior()
 	{
 		//we have 5 objects from original
@@ -85,42 +142,6 @@ function iesorcpp(backbone, globalConfig, localConfig)
 		// self.log("Adjusted morph startX: ", behaviors[3], " adjusted startY: ", behaviors[4]);
 
 	}
-
-	self.neatGenomeToByteCode = function(ngJSON)
-	{
-		//grab the json object
-	    var ng = ngJSON;
-
-	    //if we aren't the actual genome object (with functions like compat, or mutate) -- then we need to be one
-		if(ng.compat == undefined)
-		{
-			//temporary fix for now -- in the future -- all objects coming out of gen offspring will be properly converted
-			ng = winneat.genotypeFromJSON(ng);
-		}
-
-		//decode that mofo -- make sure cppnjs is present
-	    var cppn = ng.networkDecode();
-	    // self.log("CPPN: ", cppn.constructor.prototype);
-
-	    //special code for getting "byte" code -- no funny recursive stuff 
-	    var byteCPPN = cppn.cppnToByteCode.call(cppn);
-
-	    var weights = [];
-	    for(var i=0; i < cppn.connections.length; i++)
-	    {
-	        weights.push(cppn.connections[i].weight);
-	    }
-
-	    return {
-	        biasCount: cppn.biasNeuronCount,
-	        inputCount: cppn.inputNeuronCount,
-	        outputCount: cppn.outputNeuronCount,
-	        nodeCount: cppn.totalNeuronCount,
-	        connectionCount: cppn.connections.length,
-	        weights: weights,
-	        nodeOrder: byteCPPN.nodeOrder,
-	        nodeArrays: byteCPPN.nodeArrays};
-	};
 
 	self.eventCallbacks = function()
 	{ 
@@ -173,7 +194,7 @@ function iesorcpp(backbone, globalConfig, localConfig)
 						evals[index] = baseEval;
 
 						//now we're ready
-						var byteNetwork = self.neatGenomeToByteCode(genome);
+						var byteNetwork = neatGenomeToByteCode(genome);
 
 						//for now, we transfer knowledge via string to the C++ code 
 						//some performance penalty for this -- probably not as bad as simulating the whole thing in javascript
@@ -279,9 +300,15 @@ function iesorcpp(backbone, globalConfig, localConfig)
 
 					//nothing more for eval -- not too bad
 			}
+
+
 		};
 	};
 	//i dont require anything -- just answer this call
 	return self;
 };
+//be able to call externally
+iesorcpp.getIESoRWorlds = getIESoRWorlds;
+iesorcpp.neatGenomeToByteCode = neatGenomeToByteCode;
+
 

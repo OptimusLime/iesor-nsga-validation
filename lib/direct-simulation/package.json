@@ -1,0 +1,19 @@
+{
+  "name": "direct-simulation",
+  "private" : "true",
+  "version": "0.0.1",
+  "description": "Websocket server for direct simulating objects, child process with it's own thread, I think.",
+  "keywords": [
+    "Evolution",
+    "Artificial Neural Networks",
+    "WIN"
+  ],
+  "author": {
+    "name": "Paul Szerlip",
+    "email": "Paul.Szerlip@cs.ucf.edu",
+    "url": "http://designforcode.com/"
+  },
+  "main": "direct-simulation.js",
+  "bugs": "https://github.com/OptimusLime/win-nsga/issues",
+  "license": "MIT"
+}

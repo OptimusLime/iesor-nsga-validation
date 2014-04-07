@@ -82,6 +82,8 @@
 	<!-- Now we start messing with the flex object -->
 	<script type="text/javascript">
 
+	var _simSocketCallbacks = {};
+	// var _ssID = 0;
 
 	var _socketCallbacks = {};
 	var _cbID = 0;
@@ -94,6 +96,12 @@
 	{
 		if(cb)
 			_socketCallbacks[id] = cb;
+	}
+
+	function simSaveCallback(id, cb)
+	{
+		if(cb)
+			_simSocketCallbacks[id] = cb;
 	}
 
 	window.onload = function()
@@ -111,9 +119,61 @@
 		var publishUI = require('publishUI');
 
 		var wsServerLocation = "ws://localhost:9000";
+		var simServerLocation = "ws://localhost:9001";
 
 		var socketID;
 		// var evoID = "nsgaEvoID";
+
+
+		var simSocket = new WebSocket(simServerLocation);
+		var simulationLive = false; 
+
+		function simSocketIssue(){simulationLive = false;}
+		simSocket.onopen = function(){simulationLive = true;}
+		simSocket.onclose = simSocketIssue;
+		simSocket.onerror = simSocketIssue;
+		simSocket.onmessage = function(evt)
+		{
+			var message = evt.data;
+			if(message){
+				message = JSON.parse(message);
+
+				//ignore pings
+				if(message.event == "socketID")
+				{
+					simSocket.socketID = socketID;
+				}
+				else if(message.event != "ping")
+				{
+					// console.log("Message event: ", message.event);
+					//this is a reply to us, call relevant callback
+					if(message.replyID != undefined)
+					{
+						//if callbac kexists, call it
+						if(_simSocketCallbacks[message.replyID])
+						{
+							// console.log("Calling back with data: ", message.event);
+							_simSocketCallbacks[message.replyID](message);
+						}	
+					}
+				}
+			}
+		}
+		function sendSimMessage(msgJSON, cb)
+		{
+			if(simulationLive)
+			{
+				var id = getNextID();
+				simSaveCallback(id, cb);
+
+				msgJSON.replyID = id;
+
+				//send our message with the id
+				simSocket.send(JSON.stringify(msgJSON));			
+			}
+		}
+
+
 
 		ws = new WebSocket(wsServerLocation); 
 
@@ -304,6 +364,94 @@
 		var knownLinks = {};
 		var initialFind = true;
 		var seedNodes = {};
+
+		var isSimulating = false;
+
+		var callbackTime = 66;
+		var simTimeMS = 16;
+
+		var simCanvas;
+		var lastWID;
+
+		function scheduleSimulation()
+		{
+			//time to get our simulation on!
+			//we shall store it inside ediv
+			sendSimMessage({event: "simulate", simTimeMS: simTimeMS}, function(data)
+			{
+				//don't do anything when you've been shut down
+				if(!isSimulating)
+					return;
+
+				// console.log("Sim data: ", data);
+				//we need to display the object in the canvas
+				//force the canvas to display a single frame
+				simCanvas.forceDisplayFrame(data.frame, false);
+
+			});
+
+			if(isSimulating)
+				setTimeout(scheduleSimulation, 33);
+		}
+
+
+		//--this here be shown now arrrrggghh
+		pubEmitter.on('publishShown', function(wid, eDiv){
+
+			if(!lastWID)
+				lastWID = wid;
+
+			//grab our div id
+			// if(!simCanvas)
+			// {
+				//need to make this EVERY time
+			var cw = pubSize.width;
+			var ch = pubSize.height;
+			var nsCanvas = document.createElement('canvas');
+			nsCanvas.id = wid + "-sim-canvas";
+			nsCanvas.setAttribute("width", cw);
+			nsCanvas.setAttribute("height", ch);
+			eDiv.appendChild(nsCanvas);
+
+			// prep the canvas for display
+			simCanvas = new canvasDisplay(nsCanvas.id, [], {
+				canvasWidth : cw,
+				canvasHeight : ch,
+				initialZoom : 2.5
+			});
+			// }
+
+			//clear our simcanvas 
+			var clear = (lastWID != wid);
+
+			//time to get our simulation on!
+			//we shall store it inside ediv
+			sendSimMessage({event: "startSimulation", artifact: storedArtifacts[wid]}, function(data)
+			{
+				//now we're simulating !
+				isSimulating = true;
+
+				//force the canvas to display a single frame -- don't center, and potentially clear
+				simCanvas.forceDisplayFrame(data.frame, false, clear);
+
+				// console.log("Sim start data: ", data);
+				//schedule simulation immediately
+				scheduleSimulation();
+			});
+		});
+
+		pubEmitter.on('publishArtifact', function(wid, meta, finished)
+		{
+			finished();
+		});
+
+		pubEmitter.on('publishHidden', function(wid)
+		{
+			//stop calling simulate
+			//we shall store it inside ediv
+			isSimulating = false;
+		})
+
 
 		function recursiveFindLink(wid, allArtifacts, c2p, hopProp)
 		{
@@ -586,6 +734,7 @@
 					pubEmitter.launchPublishModal(wid);
 					//the rest is up to other UI elements -- i forget which right this moment
 				})
+
 			}
 
 			//need this for a Chrome hack for updating svgs on the screen
@@ -631,12 +780,12 @@
 				var animationFrames = evalInfo[wid].frames;	
 
 				//set up the display on its own -- it will handle everything else later
-				var cd= canvasDisplay(svg, cid, animationFrames, {
+				var cd= canvasDisplay(cid, animationFrames, {
 					canvasWidth : graphInfo.canvasWidth,
 					canvasHeight : graphInfo.canvasHeight,
 					msPerFrame : 1250,
 					initialZoom : 2.5
-				}, startFrame);
+				}, svg, startFrame);
 
 				//no dupes please
 				_allCanvases[wid] = cd;

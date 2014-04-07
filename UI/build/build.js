@@ -205,7 +205,7 @@ require.register("canvas-display/canvas-display.js", function(exports, require, 
 module.exports = canvassetup;
 
 //here we are ready to setup
-function canvassetup(svg, canvasID, framesToDisplay, canvasInfo, startFrame)
+function canvassetup(canvasID, framesToDisplay, canvasInfo, svg, startFrame)
 {
 	var self = this;
 
@@ -231,7 +231,7 @@ function canvassetup(svg, canvasID, framesToDisplay, canvasInfo, startFrame)
 	var frameCount = framesToDisplay.length;
 
 	//which frame are we on now
-	var currentFrame = startFrame - 1 || -1;
+	var currentFrame = (startFrame || 0) - 1;
 
 	//zooming in initially -- could leave something to desire -- in the future, we want to track the center of mass and adjust accordingly
 	var zoomIn = canvasInfo.initialZoom || 2.5;
@@ -251,8 +251,12 @@ function canvassetup(svg, canvasID, framesToDisplay, canvasInfo, startFrame)
 	//do we want to pause/end animation?
 	var shouldEndAnimation = false;
 
+	//by default we center the camera where the indivudal in the frame is
+	var centerCamera = true;
+
 	//okay, just do it already
-	switchFrames();
+	if(framesToDisplay.length)
+		switchFrames();
 
 	self.endAnimation = function()
 	{
@@ -269,6 +273,31 @@ function canvassetup(svg, canvasID, framesToDisplay, canvasInfo, startFrame)
 	}
 
 	self.getCurrentFrame = function(){return currentFrame;};
+
+	self.forceDisplayFrame = function(frame, camCentered, clear)
+	{	
+
+		if(clear)
+		{
+			//get rid of all the fab objects
+			_iFabObjects = {};
+
+			//then clear the canvas
+			canvas.clear();
+		}
+		//do we adjust camera for this frame?
+		centerCamera = camCentered;
+
+
+		if(typeof frame == "string")
+			frame = JSON.parse(frame);
+
+		//force the frame into the canvas
+		displayFrame(frame);
+
+		//now render the new canvas 
+		canvas.renderAll();
+	}
 
 	//lets switch frames now
 	function switchFrames()
@@ -288,9 +317,10 @@ function canvassetup(svg, canvasID, framesToDisplay, canvasInfo, startFrame)
 		//now render the new canvas 
 		canvas.renderAll();
 
-		var width = svg.getAttribute("width");
-		svg.setAttribute("width", parseFloat(width) + .0000000001);
-
+		if(svg){
+			var width = svg.getAttribute("width");	
+			svg.setAttribute("width", parseFloat(width) + .0000000001);
+		}
 		//no more animating for you
 		if(!shouldEndAnimation)
 			//do it again soon please -- pretty please
@@ -368,7 +398,7 @@ function canvassetup(svg, canvasID, framesToDisplay, canvasInfo, startFrame)
 
         //set phasers to zoom moderately!
         //move center of mass if necessary
-		setZoom(zoomX, zoomY, x_count ? xCOM/x_count : undefined);
+		setZoom(zoomX, zoomY, centerCamera ? xCOM/x_count : undefined);
 
 	}
 

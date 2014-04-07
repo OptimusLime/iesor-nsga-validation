@@ -20,6 +20,7 @@
     "q": "*",
     "optimuslime-traverse": "*",
     "win-utils": "0.x.x",
+    "ws": "0.x.x",
     "sylvester" : "*"
   },
   "devDependencies": {
