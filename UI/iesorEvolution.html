@@ -207,13 +207,29 @@
 		{
 			console.error(err);
 		}
+		function finishSocketCallback(replyID, err, success)
+		{
+			//we are a response -- send it along
+			//send back teh response as is (don't apply it?)
+			if(_socketCallbacks[replyID])
+				_socketCallbacks[replyID](err, success);
+		}
 		ws.onmessage = function(evt)
 		{
 			if(evt.data)
 			{
 				var message = JSON.parse(evt.data);
 
-				if(message.event == "socketID")
+				if(message.response)
+				{
+					//no error- we got a response
+					finishSocketCallback(message.replyID, undefined, message.response);					
+				}
+				else if(message.error)
+				{
+					finishSocketCallback(message.replyID, message.error);
+				}
+				else if(message.event == "socketID")
 				{
 					socketID = message.socketID;
 					sendJSONMessage(ws, {event: "uiControl:startUIEvolution", arguments: [socketID]});
@@ -223,6 +239,7 @@
 					//new data hooray!
 					handleEvolutionData(message.data);
 				}
+
 
 				// console.log("Message from app: ", message);
 			}
@@ -442,9 +459,13 @@
 
 		pubEmitter.on('publishArtifact', function(wid, meta, finished)
 		{
-			//no more simulating IF you close?
-			isSimulating = false;
-			finished();
+			sendJSONMessage(ws, {event:"evolution:publishArtifact", arguments: [wid, meta]}, function(err, data)
+			{
+				//no more simulating IF you close?
+				isSimulating = false;
+				finished();
+			});
+
 		});
 
 		pubEmitter.on('publishHidden', function(wid)

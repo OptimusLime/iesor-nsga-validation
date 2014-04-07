@@ -15,6 +15,7 @@
   },
   "main": "iesor-cpp.js",
   "dependencies" : {
+    "q" : "*",
     "node-iesor" : "*",
     "win-neat" : "*",
     "cppnjs" : "*"
