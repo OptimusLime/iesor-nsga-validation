@@ -247,7 +247,11 @@
 				{
 					socketID = message.socketID;
 					//send in potential branching object
-					sendJSONMessage(ws, {event: "uiControl:startUIEvolution", arguments: [socketID, urlParams['branch']]});
+					setTimeout(function()
+					{
+						sendJSONMessage(ws, {event: "uiControl:startUIEvolution", arguments: [socketID, urlParams['branch']]});
+						//wait a little before calling this
+					}, 100);
 				}
 				else if(message.event == "evolutionData")
 				{

@@ -73,6 +73,14 @@ function canvassetup(canvasID, framesToDisplay, canvasInfo, svg, startFrame)
 
 	self.getCurrentFrame = function(){return currentFrame;};
 
+
+	self.frameToSVG = function(frame, camCentered, clear)
+	{
+		self.forceDisplayFrame(frame,camCentered, clear);
+		//then we need to get the svg object from the canvas
+		return canvas.toSVG();
+	}
+
 	self.forceDisplayFrame = function(frame, camCentered, clear)
 	{	
 

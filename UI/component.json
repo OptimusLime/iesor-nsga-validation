@@ -2,9 +2,14 @@
   "name": "iesorUI",
   "description": "Making the canvas elements readily available.",
   "version": "0.0.1",
-  "local" : ["canvas-display", "publishUI"],
+  "local" : ["canvas-display", "publishUI", "win-home-ui", "win-setup"],
   "paths" : ["libs"],
   "dependencies": {
+    "optimuslime/win-query" : "*",
+    "optimuslime/win-data" : "*",
+    "optimuslime/win-utils" : "*",
+    "optimuslime/win-phylogeny" : "*",
+    "optimuslime/win-backbone": "*"
   },
   "scripts": [
     "js/iesorUI.js"

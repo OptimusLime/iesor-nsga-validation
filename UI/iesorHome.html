@@ -3,67 +3,58 @@
 <head>
 	<meta charset=utf-8 />
 	<title></title>
-    <style>
+	<style>
 
-    body, html
-    {
-    	width:100%;
-    	height:100%;
-    }
+		body, html
+		{
+			width:100%;
+			height:100%;
+		}
 
-	svg {
-	  border: 1px solid #999;
-	  overflow: hidden;
-	}
+		svg {
+			border: 1px solid #999;
+			overflow: hidden;
+		}
 
-	text {
-	  font-weight: 300;
-	  font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
-	  font-size: 14px;
-	}
+		text {
+			font-weight: 300;
+			font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
+			font-size: 14px;
+		}
 
-	h1, h2 {
-	  color: #333;
-	}
+		h1, h2 {
+			color: #333;
+		}
 
-	textarea {
-	  width: 800px;
-	}
+		textarea {
+			width: 800px;
+		}
 
-	label {
-	  margin-top: 1em;
-	  display: block;
-	}
+		label {
+			margin-top: 1em;
+			display: block;
+		}
 
-	.error {
-	  color: red;
-	}
+		.error {
+			color: red;
+		}
 	</style>
 	<link rel="stylesheet" type="text/css" media="screen" href="/build/build.css" />
 </head>
 <body class="flexcenter">
 
+	<div id="home" ></div>
 
-	<!-- <input id="iTitle" placeholder="SVG File Name"></input> -->
-	<!-- <button id="bSvgSave">Save SVG to File</button> -->
+<script type="text/javascript" src="/js/fabric.min.js"></script>
+<script type="text/javascript" src="/build/build.js"></script>
+<script type="text/javascript" src="/build/build.css"></script>
 
-	 <!-- <div id="d3Phylogeny" style="height: 100%;"></div> -->
-     <!-- <div id="header">phylogeny</div> -->
+<!-- // <script type="text/javascript" src="http://cpettitt.github.io/project/dagre-d3/latest/dagre-d3.min.js"></script>
+-->
+<!-- Now we start messing with the flex object -->
+<script type="text/javascript">
 
-	<svg id="d3Phylogeny" width=800 height=600>
-  		<g transform="translate(20, 20)"/>
-	</svg>
-
-    <script type="text/javascript" src="/js/fabric.min.js"></script>
-    <script type="text/javascript" src="/build/build.js"></script>
-    <script type="text/javascript" src="/build/build.css"></script>
-
-	<!-- // <script type="text/javascript" src="http://cpettitt.github.io/project/dagre-d3/latest/dagre-d3.min.js"></script> -->
-
-	<!-- Now we start messing with the flex object -->
-	<script type="text/javascript">
-
-	var _simSocketCallbacks = {};
+		var _simSocketCallbacks = {};
 	// var _ssID = 0;
 
 	var _socketCallbacks = {};
@@ -85,32 +76,19 @@
 			_simSocketCallbacks[id] = cb;
 	}
 
-    var urlParams;
-    (window.onpopstate = function () {
-        var match,
+	var urlParams;
+	(window.onpopstate = function () {
+		var match,
                 pl     = /\+/g,  // Regex for replacing addition symbol with a space
                 search = /([^&=]+)=?([^&]*)/g,
                 decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
                 query  = window.location.search.substring(1);
 
-        urlParams = {};
-        while (match = search.exec(query))
-            urlParams[decode(match[1])] = decode(match[2]);
-    })();
+                urlParams = {};
+                while (match = search.exec(query))
+                	urlParams[decode(match[1])] = decode(match[2]);
 
-	window.onload = function()
-	{
-
-		var w = window,
-		    d = document,
-		    e = d.documentElement,
-		    g = d.getElementsByTagName('body')[0],
-		    x = w.innerWidth || e.clientWidth || g.clientWidth,
-		    y = w.innerHeight|| e.clientHeight|| g.clientHeight;
-
-		//require our canvas display
-		var canvasDisplay = require('canvas-display');
-		var publishUI = require('publishUI');
+            })();
 
 
 
@@ -123,6 +101,7 @@
 
 		var simSocket = new WebSocket(simServerLocation);
 		var simulationLive = false; 
+		var socketLive = false;
 
 		function simSocketIssue(){simulationLive = false;}
 		simSocket.onopen = function(){simulationLive = true;}
@@ -188,8 +167,9 @@
 		{
 			//
 			console.log("UI Socket connected!");
+			socketLive = true;
 
-
+			// loadHomeUI();
 
 			
 			//"evolution:nsga-startEvolution"
@@ -228,522 +208,202 @@
 				else if(message.event == "socketID")
 				{
 					socketID = message.socketID;
-					sendJSONMessage(ws, {event: "uiControl:startUIEvolution", arguments: [socketID]});
 				}
-				else if(message.event == "evolutionData")
-				{
-					//new data hooray!
-					handleEvolutionData(message.data);
-				}
-
-
 				// console.log("Message from app: ", message);
 			}
 		}
+		window.onload = function() {
+		// window.onload = function()
+		// {
+			console.log("Checking loaded");
+			var checkSimulation = function() {
+				console.log("Checkin sim: ", " live: ", simulationLive, " and sock: ",socketLive )
+				if(simulationLive && socketLive)
+					loadHomeUI();
+				else //check every 20ms if the conncetion finished
+					setTimeout(checkSimulation, 20);
+			}
+
+			checkSimulation();
+
+		}
+
+    function loadHomeUI()
+    {
+		var w = window,
+    	d = document,
+    	e = d.documentElement,
+    	g = d.getElementsByTagName('body')[0],
+    	x = w.innerWidth || e.clientWidth || g.clientWidth,
+    	y = w.innerHeight|| e.clientHeight|| g.clientHeight;
+
+		//require our canvas display
+		var canvasDisplay = require('canvas-display');
+		var publishUI = require('publishUI');
+
+
 		//what do we do with websocket???
+		var winsetup = require('win-setup');
 
-		var matchRectangles = {};
-
-		var artifacts, getOrCreateData, styleElement;
-		var inputGraph = {value:""};
-		var oldInputGraphValue;
-
-		//whatever, gonna get rid of this soon
-		var debugAlignment;
-
-
-		var pubSize = {width: 250, height: 250};
-
-		//set up publish UI
-		var pubEmitter = new publishUI({objectSize: pubSize});
-
-		/* Example */
-		// digraph {
-		//     /* Note: HTML labels do not work in IE, which lacks support for &lt;foreignObject&gt; tags. */
-		//     A [label="<div style='padding: 10px;'>A <span style='font-size:32px'>Big</span> <span style='color:red;'>HTML</span> Source!</div>"];
-		//     C;
-		//     E [label="A sink"];
-		//     A -&gt; B -&gt; C;
-		//     B -&gt; D -&gt; E;
-		//     C -&gt; E;
-		//     A -&gt; D [label="<div>A multi-rank <span style='color:blue;'>HTML</span> edge!</div>"];
-		// }
-		d3.select("svg")
-		        .attr("width", x - 2*8)
-		        .attr("height", y - 2*8)
-
-      var renderer = new dagreD3.Renderer();
-
-		function tryDraw() {
-
-		  var result;
-		  if (oldInputGraphValue !== inputGraph.value) {
-
-		    oldInputGraphValue = inputGraph.value;
-		    try {
-		      result = graphlibDot.parse(inputGraph.value);
-		    } catch (e) {
-		      // inputGraph.setAttribute("class", "error");
-		      console.error("Graph error: ",e);
-		      throw e;
-		    }
-			console.log("Trying to draw: ", inputGraph.value);
-			console.log("Result: ", result);
-		    //now we result stuff
-		    if (result) {
-
-		      // Cleanup old graph
-		      var svg = d3.select("svg");
-
-
-		      // Handle debugAlignment
-		      // renderer.postLayout(function(graph) {
-		      //   if (debugAlignment) {
-		      //     // First find necessary delta...
-		      //     var minX = Math.min.apply(null, graph.nodes().map(function(u) {
-		      //       var value = graph.node(u);
-		      //       return value[debugAlignment] - value.width / 2;
-		      //     }));
-
-		      //     // Update node positions
-		      //     graph.eachNode(function(u, value) {
-		      //       value.x = value[debugAlignment] - minX;
-		      //     });
-
-		      //     // Update edge positions
-		      //     graph.eachEdge(function(e, u, v, value) {
-		      //       value.points.forEach(function(p) {
-		      //         p.x = p[debugAlignment] - minX;
-		      //       });
-		      //     });
-		      //   }
-		      // });
-
-		      // Uncomment the following line to get straight edges
-		      //renderer.edgeInterpolate('linear');
-
-		      // Custom transition function
-		      function transition(selection) {
-		        return selection.transition().duration(500);
-		      }
-
-		      renderer.transition(transition);
-
-		      console.log("Client x: ", x, " cly y: ", y);
-
-		      var layout = renderer.run(result, svg.select("g"));
-		      // transition(d3.select("svg"))
-		        // .attr("width", Math.max(x - 2*8,  layout.graph().width + 40))
-		        // .attr("height", Math.max(y - 2*8, layout.graph().height + 40))
-		      d3.select("svg")
-		        .call(d3.behavior.zoom().on("zoom", function() {
-		          var ev = d3.event;
-		          svg.select("g")
-		            .attr("transform", "translate(" + ev.translate + ") scale(" + ev.scale + ")");
-		        }));
-		    }
-		  }
-		}
-
-
-	
-		var evoIDToData = {};
-
-		var singledata;
-		getOrCreateData = function(eID, individual)
+		var moduleJSON = 
 		{
-			// if(!singledata)
-			// {
-			// 	singledata = genoToPicture(objSize, individual.genome);
-			// }
-			// return singledata;
-			//return;
-			var dataURL = evoIDToData[eID];
-			if(!dataURL)
-			{
-				dataURL = "";// genoToPicture(objSize, individual.genome);
+			"win-query" : require("win-query"),
+			"win-home-ui" : require("win-home-ui")
+		};
 
-				//save this info for next time
-				evoIDToData[eID] = dataURL;
+		var testingLogLevel = 10;
+
+		var globalConfig = {
+			// staticServer:  "http://localhost:9000",
+			server : "http://localhost",
+			port: 4000
+		};
+
+		var configurations = 
+		{
+			"global" : globalConfig,
+			"win-query" : {
+				logLevel : testingLogLevel
 			}
-			return dataURL;
-		}
+		};
 
-		//we don't want to store a bazillion -- so this should all be pretty limited
-		var storedArtifacts = {};
-		var childrenToParents = {};
-		var evalInfo = {};
+		var events = ["ui:home-initializeDisplay", "ui:home-ready"];
 
-		var knownLinks = {};
-		var initialFind = true;
-		var seedNodes = {};
-
-		var isSimulating = false;
-
-		var callbackTime = 66;
-		var simTimeMS = 16;
-
-		var simCanvas;
-		var lastWID;
-
-		function scheduleSimulation()
+		winsetup(events, moduleJSON, configurations, function(err, backObject)
 		{
-			//time to get our simulation on!
-			//we shall store it inside ediv
-			sendSimMessage({event: "simulate", simTimeMS: simTimeMS}, function(data)
+			if(err)
 			{
-				//don't do anything when you've been shut down
-				if(!isSimulating)
-					return;
-
-				// console.log("Sim data: ", data);
-				//we need to display the object in the canvas
-				//force the canvas to display a single frame
-				simCanvas.forceDisplayFrame(data.frame, false);
-
-			});
-
-			if(isSimulating)
-				setTimeout(scheduleSimulation, 33);
-		}
-
-
-		//--this here be shown now arrrrggghh
-		pubEmitter.on('publishShown', function(wid, eDiv){
-
-			if(!lastWID)
-				lastWID = wid;
-
-			//grab our div id
-			// if(!simCanvas)
-			// {
-				//need to make this EVERY time
-			var cw = pubSize.width;
-			var ch = pubSize.height;
-			var nsCanvas = document.createElement('canvas');
-			nsCanvas.id = wid + "-sim-canvas";
-			nsCanvas.setAttribute("width", cw);
-			nsCanvas.setAttribute("height", ch);
-			eDiv.appendChild(nsCanvas);
-
-			// prep the canvas for display
-			simCanvas = new canvasDisplay(nsCanvas.id, [], {
-				canvasWidth : cw,
-				canvasHeight : ch,
-				initialZoom : 2.5
-			});
-			// }
-
-			//clear our simcanvas 
-			var clear = (lastWID != wid);
-
-			//time to get our simulation on!
-			//we shall store it inside ediv
-			sendSimMessage({event: "startSimulation", artifact: storedArtifacts[wid]}, function(data)
-			{
-				//now we're simulating !
-				isSimulating = true;
-
-				//force the canvas to display a single frame -- don't center, and potentially clear
-				simCanvas.forceDisplayFrame(data.frame, false, clear);
-
-				// console.log("Sim start data: ", data);
-				//schedule simulation immediately
-				scheduleSimulation();
-			});
-		});
-
-		pubEmitter.on('publishArtifact', function(wid, meta, finished)
-		{
-			sendJSONMessage(ws, {event:"evolution:publishArtifact", arguments: [wid, meta]}, function(err, data)
-			{
-				//no more simulating IF you close?
-				isSimulating = false;
-				finished();
-			});
-
-		});
-
-		pubEmitter.on('publishHidden', function(wid)
-		{
-			//stop calling simulate
-			//we shall store it inside ediv
-			isSimulating = false;
-		});
-
-
-		function recursiveFindLink(wid, allArtifacts, c2p, hopProp)
-		{
-			hopProp.hops++;
-			var widLinks = knownLinks[wid];
-
-			//if we know our links, send it back!
-			if(widLinks)
-				return widLinks;
-
-			//otherwise, we don't know our links -- easy, it's just the links of our parent
-			var parents = c2p[wid];
-
-			//if you don't exist or you have an empty parents array
-			//objects with no parents simply link to themselves -- pretty easy don't worry
-			if(!parents || !parents.length)
-			{
-				//we don't link to no-one ya hear?
-				var link = [wid];
-				knownLinks[wid] = link;
-				
-				if(initialFind)
-					seedNodes[wid] = true;
-
-				return link;
+				console.error(err);
+				return;
 			}
 
-			//wut wut in the butt -- who we link to?
-			var newWIDLink = [];
-			var noDups = {};
+			console.log("WIN Backbone started inside browser environment.");
 
-			var noParents = true;
 
-			//who is the closest parent
-			var minHops = Number.MAX_VALUE;
-			var minDistanceParentLink;
-			for(var i=0; i < parents.length; i++)
+			//starting up our silly little backbone
+
+				var backLog = backObject.logger;
+			var backEmit = backObject.emitter;
+			var qCallBackbone = backObject.qCall;
+
+			var div = document.getElementById("home");
+
+			var objSize = {width: 175, height: 175};
+
+			var flexOptions =  
 			{
-				//we have the parent wids -- check for known link
-				var pWID = parents[i];
-
-				//if our parents exist in the population, simply add them -- yeah boyeeeeee
-				if(allArtifacts[pWID])
-				{
-					//found a parent
-					noParents = false;
-					//if we haven't already, go ahead and add the parent
-					if(!noDups[pWID])
-					{
-						newWIDLink.push(pWID);
-						//like the name implies -- no dups asshole
-						noDups[pWID] = true;
-					}
-				}
-				else
-				{
-					var hCount = {hops:0};
-					//otherwise, go back until you find the source of the parents -- it should all be here darnit
-					//the source of a single parent might be many, so we handle the array
-					var parentLink = recursiveFindLink(pWID, allArtifacts, c2p, hCount);
-
-					if(hCount.hops < minHops)
-					{
-						minHops = hCount.hops;
-						minDistanceParentLink = parentLink;
-					}
-				}				
-			}
-			//you don't have any living relatives -- well who is the closest?
-			if(noParents){
-
-				//minparent link now exists! congrats.
-				//it's also the closest parent we could find
-				for(var m=0; m < minDistanceParentLink.length; m++)
-				{
-					var pLink = minDistanceParentLink[m];
-					if(!noDups[pLink])
-					{
-						newWIDLink.push(pLink);
-						//like the name implies -- no dups asshole
-						noDups[pLink] = true;
-					}
-				}
-			}
-
-			//save them links yo, it's all about links here
-			knownLinks[wid] = newWIDLink;
-
-			//now we've built our link -- return it
-			//recursive power activate!!!!
-			return newWIDLink;
-		}
-
-		//here we goooooo
-		function handleEvolutionData(evoData)
-		{	
-			//lets just check this out manuall -- console log
-			// console.log(evoData);
+				title: "win-IESoR"
+				// mode: 'vertical' ,
+			};
 
 
-			var evaluations = evoData.evaluations;
-			var artifacts = evoData.artifacts;
-			var c2p = evoData.childrenToParents;
+			var pubSize = {width: 250, height: 250};
 
-			var newGenomes =false;
+			//set up publish UI
+			var pubEmitter = new publishUI({objectSize: pubSize});
 			
-			// console.log(typeof artifacts);
-			// console.log(evoData);
+			//we don't want to store a bazillion -- so this should all be pretty limited
+			var storedArtifacts = {};
+			var childrenToParents = {};
+			var evalInfo = {};
 
-			//let's save all the artifacts -- if you don't mind
-			//no duplicates will be sent but to be safe, we'll only save if we need to
-			for(var wid in artifacts)
+			var knownLinks = {};
+			var initialFind = true;
+			var seedNodes = {};
+
+			var isSimulating = false;
+
+			var callbackTime = 66;
+			var simTimeMS = 16;
+
+			var simCanvas;
+			var lastWID;
+
+			function scheduleSimulation()
 			{
-				newGenomes = true;
-				if(!storedArtifacts[wid])
-					storedArtifacts[wid] = artifacts[wid];
-			}
-
-			for(var wid in evaluations)
-			{
-				var eval = evaluations[wid];
-
-				//parse the body, then let's build a graph or something
-				// var body = JSON.parse(eval.iesorBody);
-
-				//this is pretty much all we need
-				evalInfo[wid] = {frames: eval.iesorFrames, distance: eval.iesorDistance, fitness: eval.realFitness};
-			}
-
-			for(var wid in c2p)
-			{
-				//make sure we have the full chain
-				if(childrenToParents[wid])
+				//time to get our simulation on!
+				//we shall store it inside ediv
+				sendSimMessage({event: "simulate", simTimeMS: simTimeMS}, function(data)
 				{
-					//just concat -- I don't care
-					childrenToParents[wid] = childrenToParents[wid].concat(c2p[wid]);
-				}
-				else
+					//don't do anything when you've been shut down
+					if(!isSimulating)
+						return;
+
+					// console.log("Sim data: ", data);
+					//we need to display the object in the canvas
+					//force the canvas to display a single frame
+					simCanvas.forceDisplayFrame(data.frame, false);
+
+				});
+
+				if(isSimulating)
+					setTimeout(scheduleSimulation, 33);
+			}
+
+
+			//--this here be shown now arrrrggghh
+			pubEmitter.on('publishShown', function(wid, eDiv){
+
+				if(!lastWID)
+					lastWID = wid;
+
+				//grab our div id
+				// if(!simCanvas)
+				// {
+					//need to make this EVERY time
+					var cw = pubSize.width;
+					var ch = pubSize.height;
+					var nsCanvas = document.createElement('canvas');
+					nsCanvas.id = wid + "-sim-canvas";
+					nsCanvas.setAttribute("width", cw);
+					nsCanvas.setAttribute("height", ch);
+					eDiv.appendChild(nsCanvas);
+
+				// prep the canvas for display
+				simCanvas = new canvasDisplay(nsCanvas.id, [], {
+					canvasWidth : cw,
+					canvasHeight : ch,
+					initialZoom : 2.5
+				});
+				// }
+
+				//clear our simcanvas 
+				var clear = (lastWID != wid);
+
+				//time to get our simulation on!
+				//we shall store it inside ediv
+				sendSimMessage({event: "startSimulation", artifact: storedArtifacts[wid]}, function(data)
 				{
-					//grab the parental info -- useful for chainin our graphs
-					childrenToParents[wid] = c2p[wid];
-				}
-			}
+					//now we're simulating !
+					isSimulating = true;
 
+					//force the canvas to display a single frame -- don't center, and potentially clear
+					simCanvas.forceDisplayFrame(data.frame, false, clear);
 
-			//for all the new individuals, find who you link to (if anyone)
-			for(var wid in artifacts)
+					// console.log("Sim start data: ", data);
+					//schedule simulation immediately
+					scheduleSimulation();
+				});
+			});
+
+			pubEmitter.on('publishArtifact', function(wid, meta, finished)
 			{
-				var hops = {hops: 0};
-				//this will setup our links for the graphing expedition
-				recursiveFindLink(wid, storedArtifacts, childrenToParents, hops);
-			}
-
-			//no more of that, thank you
-			initialFind = false;
-			if(newGenomes)
-			{
-				console.log("Artifacats processed, building graph...");
-				buildGraph(storedArtifacts, evalInfo, childrenToParents);
-			}
-		}
-
-		var _allCanvases = {};
-
-		function buildGraph(allArtifacts, allEvals, c2p)
-		{
-			var buildGraph = "digraph {";
-
-			//rebuild from empty variables
-			var gID = 0;
-			var graphNames = {};
-			function nextGraphNode() { return gID++;}
-
-			var maxDistance = 0;
-
-			var evalProp = "fitness";
-
-			for(var wid in allEvals)
-			{
-				//grab farthest walkers -- or most efficient
-				// maxDistance = Math.max(maxDistance, allEvals[wid].distance);
-				maxDistance = Math.max(maxDistance, allEvals[wid][evalProp]);
-			}
-
-			//seed nodes are different
-			for(var wid in seedNodes)
-			{
-				//var graphi info
-				var graphID = nextGraphNode();
-
-				var width = 45;
-				var height = 25;
-
-				//attach graph to wid
-				graphNames[wid] = {graphID: graphID, canvasWidth: width, canvasHeight: height};
-
-				var elementStyle = "";// "width: " + width + "px; height: " + height + "px;";
-
-				//must add special graph node for the seeds
-				var line = (graphID + ' [label=\"<div id=\'' + wid + '\' class=\'normal'  +  '\' style=\'' + elementStyle + " margin: 10px;" + '\' >Original</div>\"];\n');
-				
-				buildGraph += line;
-			}
-
-			//for each artifact, create a box on the screen -- for now, just set size to be proportional to fitness
-			for(var wid in allArtifacts)
-			{
-				//seeds are different in this display
-				if(seedNodes[wid])
-					continue;
-
-				var graphID = nextGraphNode();
-
-				//grab the distance
-				var evalFraction = allEvals[wid][evalProp]/maxDistance;
-
-				var width = 100*(1+evalFraction);
-				var height = 100*(1+evalFraction);
-
-				//attach graph to wid
-				graphNames[wid] = {graphID: graphID, canvasWidth: width, canvasHeight: height};
-
-				var elementStyle = "width: " + width + "px; height: " + height + "px;";
-				var line = (graphID + ' [label=\"<div id=\'' + wid + '\' class=\'normal'  +  '\' style=\'' + elementStyle + " margin: 10px;" + '\' />\"];\n');
-
-				// console.log("Line: ", line)
-				buildGraph += line;
-			}
-
-
-			//now lets connection everything
-			for(var wid in allArtifacts)
-			{
-				//let's do some linking -- we got this dawg
-				var kLink = knownLinks[wid];
-
-				for(var i=0; i < kLink.length; i++)
+				sendJSONMessage(ws, {event:"evolution:publishArtifact", arguments: [wid, meta]}, function(err, data)
 				{
-					var lineage = kLink[i];
-					//no harm in skipping -- it's encouraged! self links are silly
-					if(lineage == wid)
-						continue;
+							//no more simulating IF you close?
+							isSimulating = false;
+							finished();
+				});
 
-					if(!graphNames[lineage])
-						continue;
+			});
 
-					//source is the parent graph node id
-					var srcID = graphNames[lineage].graphID;
-					//target is the child ?
-					var tgtID = graphNames[wid].graphID;
-					//from parent to child all links must flow
+			pubEmitter.on('publishHidden', function(wid)
+			{
+				//stop calling simulate
+				//we shall store it inside ediv
+				isSimulating = false;
+			});
 
-					//add some links, friend
-					buildGraph += (srcID+ " -> " + tgtID + ";");
-				}
-
-			}
-
-			//now we need to deal with edges
-			//grab all our links
-			// for(var i=0; i < artifactLinks.length; i++)
-			// {
-			// 	var aLink = artifactLinks[i];
-			// 	//from the links we can figure out all our nodes and labels
-			// 	buildGraph += (graphNames[aLink.source].graphID + " -> " + graphNames[aLink.target].graphID + ";");
-			// }
-
-			buildGraph += "}";
-			inputGraph.value = buildGraph;
-			// console.log(inputGraph);
-			tryDraw();
-
-			// canvasDisplay()
 
 			function attachPublish(wid, widElement)
 			{
@@ -756,72 +416,147 @@
 
 			}
 
-			//need this for a Chrome hack for updating svgs on the screen
-		    var svg =  document.getElementById("d3Phylogeny");
 
-			for(var wid in allArtifacts){
+			var _allCanvases = {};
 
-				//add a click event to the whole div object
-				var widElement = document.getElementById(wid);
-				attachPublish(wid, widElement);
-
-
-				var cid =  wid + "-canvas";
-				var cidElement = document.getElementById(cid);
-				
-				//we don't dup here -- no sir
-				// if(cidElement)
-				// 	continue;
-				var startFrame;
-				if(_allCanvases[wid])
+			var uID, homeUI;
+			//for now we pass seed information to init display -- later, we'll move this to a more appropriate place 
+			//a module should have control over getting seeds (they are constant for a domain and hosted on the server)
+			qCallBackbone("ui:home-initializeDisplay", div, flexOptions)
+				.then(function(uiInfo)
 				{
-				 	startFrame = _allCanvases[wid].getCurrentFrame();
-					//
-					// _allCanvases[wid].endAnimation();		
+					//flex if we want to tap into any specific events
+					homeUI = uiInfo.ui;
 
-					//and that's the last we ever saw of that canvas object -- goodbye sweet friend
-				}
+					//save our ui identifier for future ui calls
+					uID = uiInfo.uID;
 
-				var graphInfo = graphNames[wid];
+					//emitter lets us know the important stuff
+					var uiEmitter = uiInfo.emitter;
 
-				var canvasWidth = graphInfo.canvasWidth;
-				var canvasHeight = graphInfo.canvasHeight;
+					//parentSelected
+					//parentUnselected
+					//individualCreated
+					uiEmitter.on('elementCreated', function(wid, artifact, eDiv, finished)
+					{
+						storedArtifacts[wid] = artifact;
+						//attach a ui object for displaying the publish UI (which also serves as a evolution starter)
+						attachPublish(wid, eDiv);
 
-				//build the canvas element -- name it and give it the proper size
-				var can = document.createElement('canvas');
-				can.setAttribute("id", cid);
-				can.setAttribute("width", canvasWidth);
-				can.setAttribute("height", canvasHeight);
+						var widArtifacts = {};
+						widArtifacts[wid] = artifact;
 
-				//yayayayayayay
-				document.getElementById(wid).appendChild(can)
+						//need to create this individual
+						sendJSONMessage(ws, {event: "iesor:simulateArtifacts", arguments: [widArtifacts, {simTimeMS: 2500}]}, function(err, data)
+							{
+								//get teh returned data -- this is boss
+								var cid =  wid + "-canvas";
 
-				var animationFrames = evalInfo[wid].frames;	
+								var canvasWidth = objSize.width;
+								var canvasHeight = objSize.height;
 
-				//set up the display on its own -- it will handle everything else later
-				var cd= canvasDisplay(cid, animationFrames, {
-					canvasWidth : graphInfo.canvasWidth,
-					canvasHeight : graphInfo.canvasHeight,
-					msPerFrame : 1250,
-					initialZoom : 2.5
-				}, svg, startFrame);
+								//build the canvas element -- name it and give it the proper size
+								var can = document.createElement('canvas');
+								can.setAttribute("id", cid);
+								can.setAttribute("width", canvasWidth);
+								can.setAttribute("height", canvasHeight);
 
-				//no dupes please
-				_allCanvases[wid] = cd;
+								//yayayayayayay
+								eDiv.appendChild(can)
 
-			}	
+								// console.log(data[wid]);
 
-			// 	console.log("Going on to make the canvas display.");
+								//when you get it raw from the source, these are iesor frames -- not just frames.
+								var animationFrames = data[wid].iesorFrames;	
+
+								//set up the display on its own -- it will handle everything else later
+								var cd= canvasDisplay(cid, animationFrames, {
+									canvasWidth : canvasWidth,
+									canvasHeight : canvasHeight,
+									msPerFrame : 1250,
+									initialZoom : 2.5
+								});
+							});
+
+						// backLog("final: p createive indiv: ", eID, " div: ", eDiv, " indvi: ", individual, " fins: ", finished);
+						// backLog("Individual: ", artifact);
+
+						//all done!
+						if(finished)
+							finished();
+					});
+
+					uiEmitter.on('artifactBranch', function(wid, artifact)
+					{
+						backLog("Branch artifact: ", wid, "art: ", artifact);
+
+						var branchLocation = "http://localhost:4090/iesorEvolution.html?branch=" + wid;
+						window.location.href = branchLocation;
+
+					})
+					uiEmitter.on('artifactAncestors', function(wid, artifact)
+					{
+						backLog("See ancestors: ", wid, " art: ", artifact);
+					})
+				})
+				.then(function()
+				{
+					var is = parseInt( urlParams["start"] || 0);
+					
+					console.log("Start: " , is);
+					var catOptions = {
+						itemsToDisplay : 100,
+						itemStart : is,
+						objectSize: objSize
+					}
+
+					return qCallBackbone("ui:home-ready", uID, catOptions);
+				})
+				.then(function()
+				{
+					//now we see what happened!
+					backLog("Finished ui ready state!");
+
+				}, function(err)
+				{
+					console.error(err);
+				});
+
+
+		});
+
+
+			//  var svg =  document.getElementById("d3Phylogeny");
+
+			// for(var wid in allArtifacts){
+
+			// 	//add a click event to the whole div object
+			// 	var widElement = document.getElementById(wid);
+			// 	attachPublish(wid, widElement);
+
+
+			// 	var cid =  wid + "-canvas";
+			// 	var cidElement = document.getElementById(cid);
+			
+			// 	//we don't dup here -- no sir
+			// 	// if(cidElement)
+			// 	// 	continue;
+			// 	var startFrame;
+			// 	if(_allCanvases[wid])
+			// 	{
+			// 	 	startFrame = _allCanvases[wid].getCurrentFrame();
+			// 		//
+			// 		// _allCanvases[wid].endAnimation();		
+
+			// 		//and that's the last we ever saw of that canvas object -- goodbye sweet friend
+			// 	}
 
 			// 	var graphInfo = graphNames[wid];
-			// 	var animationFrames = evalInfo[wid].frames;	
 
 			// 	var canvasWidth = graphInfo.canvasWidth;
 			// 	var canvasHeight = graphInfo.canvasHeight;
 
-			// 	var cwD2 = canvasWidth/2;
-			// 	var chD2 = 3*canvasHeight/4;
-
+			// 	//build the canvas element -- name it and give it the proper size
 			// 	var can = document.createElement('canvas');
 			// 	can.setAttribute("id", cid);
 			// 	can.setAttribute("width", canvasWidth);
@@ -830,150 +565,26 @@
 			// 	//yayayayayayay
 			// 	document.getElementById(wid).appendChild(can)
 
-			// 	//now we need to create an animation out of our frames -- i'll settle for setting up canvas
-			// 	var firstFrame = JSON.parse(animationFrames[0]);
+			// 	var animationFrames = evalInfo[wid].frames;	
 
+			// 	//set up the display on its own -- it will handle everything else later
+			// 	var cd= canvasDisplay(cid, animationFrames, {
+			// 		canvasWidth : graphInfo.canvasWidth,
+			// 		canvasHeight : graphInfo.canvasHeight,
+			// 		msPerFrame : 1250,
+			// 		initialZoom : 2.5
+			// 	}, svg, startFrame);
 
-			// 	var canvas = new fabric.StaticCanvas(cid, {
-   //                  // hoverCursor: 'pointer',
-   //                  // selection: false,
-   //                  // perPixelTargetFind: true,
-   //                  // targetFindTolerance: 5
-   //              });
+			// 	//no dupes please
+			// 	_allCanvases[wid] = cd;
 
-   //              //don't render when we just add stuff you know?????
-   //              canvas.renderOnAddRemove = false;
-
-   //              insertObjects = firstFrame.shapes;
-                 
-   //              var radToDeg = 180.0/Math.PI;
-
-	  //           for(var id in insertObjects) {
-
-	  //               var fabObj, props;
-	  //               var canvasObj = insertObjects[id];
-
-	  //               var polyPoints, tl, bodyOffset, color, wh;
-
-	  //               var radius, center;
-
-	  //               switch (canvasObj.type) {
-	  //                   case "Rect":
-
-	  //                       bodyOffset = canvasObj.bodyOffset;
-	  //                       wh = canvasObj.widthHeight;
-	  //                       tl = canvasObj.topLeft;
-	  //                       color = canvasObj.color || '#f55';
-
-	  //                       props = { 
-	  //                       	top: chD2 - tl.y - bodyOffset.y, 
-	  //                       	left: topLeft.x + cwD2 + bodyOffset.x,
-	  //                           width: parseFloat(wh.width), height:  parseFloat(wh.height), fill: color,
-	  //                           angle: radToDeg*canvasObj.rotation 
-	  //                       };
-
-	  //                           //boom biatch
-	  //                           // console.log("Print it rect: ", props);
-
-	  //                       //only create object 
-	  //                       if (!fabObj)
-	  //                           fabObj = new fabric.Rect(props);
-
-	  //                       break;
-	  //                   case "Polygon":
-
-	  //                   //polygon stuff -- just invert y?
-	  //                       var bodyOffset = canvasObj.bodyOffset;
-
-	  //                       for(var p=0; p < canvasObj.points.length; p++)
-	  //                       {
-	  //                           canvasObj.points[p].y *= -1.0;
-	  //                       }
-
-	  //                       color = canvasObj.color || "#43B";
-
-
-	  //                       props = {
-	  //                           top: chD2 - bodyOffset.y,
-	  //                           left: cwD2 + bodyOffset.x,
-	  //                           fill: color, angle: radToDeg*canvasObj.rotation 
-	  //                       };
-
-	  //                           // console.log("Print it poly: ", props);
-	  //                       //only create object
-   //                          fabObj = new fabric.Polygon(canvasObj.points, props);
-
-
-	  //                       break;
-	  //                   case "Circle":
-
-	  //                       var bodyOffset = canvasObj.bodyOffset;
-
-	  //                       center = canvasObj.center;
-	  //                       radius = (canvasObj.radius);
-	  //                       color = canvasObj.color || 'green';
-
-	  //                       var stroke = canvasObj.stroke || '#147';
-	  //                       var sw = .5;
-
-	  //                       props = { 
-	  //                       	top: chD2 - center.y - bodyOffset.y - sw/2,
-	  //                       	left: cwD2 + center.x + bodyOffset.x - sw/2,
-	  //                       	radius: radius,
-	  //                           fill: color,
-	  //                           stroke: stroke,
-	  //                           strokeWidth: sw
-	  //                       };
-	  //                           // console.log("Print it circle: ", props);
-
-   //                          fabObj = new fabric.Circle(props);
-
-	  //                       break;
-	  //               }
-
-	  //               canvas.add(fabObj);
-
-	  //           }
-
-	  //            var objects = canvas.getObjects();
-
-	  //            var zoomX = zoomY = 2.3;
-
-	  //           for(var key in objects)
-	  //           {
-
-	  //               var object = objects[key];
-	  //               var scaleX = object.scaleX,
-	  //                       scaleY = object.scaleY,
-	  //                       left = object.left,
-	  //                       top = object.top;
-
-	  //               // preserve the original dimensions.
-	  //               object.original_scaleX = (object.original_scaleX == undefined) ? scaleX : object.original_scaleX;
-	  //               object.original_scaleY = (object.original_scaleY == undefined) ? scaleY : object.original_scaleY;
-	  //               object.original_left = (object.original_left == undefined) ? left : object.original_left;
-	  //               object.original_top = (object.original_top == undefined) ? top : object.original_top;
-
-	  //               object.scaleX = object.original_scaleX * zoomX;
-	  //               object.scaleY = object.original_scaleY * zoomY;
-	  //               object.left = (object.original_left - cwD2) * zoomX + cwD2;
-	  //               object.top = (object.original_top - chD2)* zoomY + chD2;
-
-	  //               object.setCoords();
-	  //           }
-
-			// 	 //now render the new canvas 
-	  //           canvas.renderAll();
-
-			// }
-
+			// }	
 
 
 		}
 
 
-	}
-			
+		
 
 	      //   				var fullNodes = [];
 	      //   				var nodes = {};
@@ -983,7 +594,7 @@
 	      //   				for(var wid in fullNames)
 	      //   					nameToWid[fullNames[wid]] = wid;
 
-	        			
+	      
 	      //   				var buildGraph = "digraph {";
 
 	      //   				var gID = 0;
@@ -1013,7 +624,7 @@
 	      //   				inputGraph.value = buildGraph;
 	      //   				tryDraw();
 
-							
+	      
 
 	        				//now lets draw in the div objects
 	        				// for(var wid in artifacts)
@@ -1030,11 +641,8 @@
 
 
 
-	
-	</script>
-
-
-
+	        				
+	        			</script>
 
 </body>
 </html>
